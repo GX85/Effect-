@@ -4,6 +4,7 @@
  * behave the same and the logic is testable. Storage is per browser (localStorage).
  */
 import { isKind } from './agent/models.ts';
+import { memoryText, type Memory } from './brain.ts';
 import type { AgentEvent, Design, Kind, ProjectInput, Route, Spec, StepStatus, Usage } from './agent/types.ts';
 
 export type Version = {
@@ -62,10 +63,12 @@ export type Project = {
   versions: Version[];
   created: number;
   updated: number;
+  /** Effect Brain: brief, tokens and decisions every agent reads. */
+  memory?: Memory | null;
 };
 
 export const VERSION_LIMIT = 30;
-const STEP_TITLES: Record<string, string> = { architect: 'Архитектор', designer: 'Дизайнер', developer: 'Разработчик', tester: 'Тестировщик', reviewer: 'Ревьюер', answer: 'Ответ' };
+const STEP_TITLES: Record<string, string> = { architect: 'Архитектор', designer: 'Дизайнер', developer: 'Разработчик', tester: 'Тестировщик', reviewer: 'Ревьюер', answer: 'Ответ', audit: 'Диагностика', playtester: 'Плейтестер' };
 const KEY = 'effect.projects.v2';
 const OLD_KEY = 'effect.projects.v1';
 
@@ -181,7 +184,10 @@ export function applyEvent(run: RunView, e: AgentEvent, now = Date.now()): RunVi
     case 'step': {
       const has = run.steps.some((s) => s.id === e.id);
       const role = 'role' in e ? e.role : (e.id.split('-')[0] === 'fix' || e.id === 'polish' ? 'developer' : e.id.split('-')[0]);
-      const steps = has ? run.steps : [...run.steps, { id: e.id, role, title: 'title' in e ? e.title : (STEP_TITLES[role] ?? e.id), status: 'pending' as StepStatus }];
+      const added: StepView = { id: e.id, role, title: 'title' in e ? e.title : (STEP_TITLES[role] ?? e.id), status: 'pending' };
+      // Unplanned steps (diagnostics, fixes) go where they ran: before the first step still waiting.
+      const at = run.steps.findIndex((s) => s.status === 'pending');
+      const steps = has ? run.steps : at < 0 ? [...run.steps, added] : [...run.steps.slice(0, at), added, ...run.steps.slice(at)];
       // A fix step is inserted after the step that triggered it.
       return {
         ...run,
@@ -270,6 +276,7 @@ export function projectInput(p: Project | null): ProjectInput | null {
     html: p.html,
     spec: p.spec ?? null,
     design: p.design ?? null,
+    memory: memoryText(p.memory) || undefined,
     history: p.messages
       .filter((m) => !m.error && m.text)
       .slice(-6)

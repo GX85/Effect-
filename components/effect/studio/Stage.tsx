@@ -3,10 +3,11 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { cleanEditedHtml, MAX_EDIT_HTML, withBridge } from '@/lib/effect/bridge';
 import { highlightHtml } from '@/lib/effect/highlight';
 import { clock, duration, thumbnailHtml, type Project, type RunView } from '@/lib/effect/project';
+import { emptyMemory, type Memory } from '@/lib/effect/brain';
 import type { IconName } from '@/lib/effect/icons';
 import { Icon } from '../ui';
 
-export type View = 'preview' | 'code' | 'versions';
+export type View = 'preview' | 'code' | 'versions' | 'memory';
 export type Device = 'desktop' | 'tablet' | 'phone';
 
 const DEVICES: Record<Device, { w: number; h: number; label: string }> = {
@@ -227,6 +228,63 @@ function Versions({ project, onRestore, onCompare, compare }: { project: Project
   );
 }
 
+/** Effect Brain: what every agent remembers about this project. Editable. */
+function MemoryPanel({ memory, onChange }: { memory: Memory | null | undefined; onChange: (m: Memory) => void }) {
+  const m = memory ?? emptyMemory(0);
+  const tokens = Object.entries(m.tokens);
+  const isColor = (v: string) => /^(#|rgb|hsl|oklch)/i.test(v);
+  if (!m.brief && !tokens.length && !m.decisions.length)
+    return <EmptyState icon="layers" title="Память пока пуста" text="После первой сборки здесь появятся бриф проекта, дизайн-токены и ваши решения. Агенты читают их при каждой правке." />;
+  return (
+    <div className="fxs-memory">
+      <section>
+        <h3>Бриф</h3>
+        <textarea
+          aria-label="Бриф проекта"
+          value={m.brief}
+          rows={4}
+          maxLength={900}
+          onChange={(e) => onChange({ ...m, brief: e.target.value, updated: Date.now() })}
+        />
+      </section>
+      {tokens.length > 0 && (
+        <section>
+          <h3>Дизайн-токены</h3>
+          <ul className="fxs-tokens">
+            {tokens.map(([k, v]) => (
+              <li key={k}>
+                {isColor(v) && <i style={{ background: v }} aria-hidden="true" />}
+                <span>{k}</span>
+                <code>{v}</code>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+      <section>
+        <h3>Решения</h3>
+        {m.decisions.length === 0 ? (
+          <p className="fxs-muted-note">Правки, которые вы попросите, появятся здесь — агенты будут их соблюдать.</p>
+        ) : (
+          <ul className="fxs-decisions">
+            {m.decisions.map((d, i) => (
+              <li key={d + i}>
+                <span>{d}</span>
+                <button type="button" aria-label={'Забыть: ' + d} title="Забыть" onClick={() => onChange({ ...m, decisions: m.decisions.filter((_, j) => j !== i), updated: Date.now() })}>
+                  <Icon name="close" size={16} />
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+      <button type="button" className="fxs-btn sm danger" onClick={() => onChange(emptyMemory())}>
+        <Icon name="trash" size={16} /> Очистить память
+      </button>
+    </div>
+  );
+}
+
 export default function Stage(props: {
   project: Project;
   html: string;
@@ -238,6 +296,7 @@ export default function Stage(props: {
   onDevice: (d: Device) => void;
   onEdit: (html: string, source: 'text' | 'code') => void;
   onRestore: (id: string) => void;
+  onMemory: (m: Memory) => void;
   onDownload: () => void;
   onCopy: () => void;
   flash: (t: string, tone?: 'ok' | 'err') => void;
@@ -305,6 +364,7 @@ export default function Stage(props: {
               ['preview', 'eye', 'Превью'],
               ['code', 'code', 'Код'],
               ['versions', 'history', 'Версии'],
+              ['memory', 'layers', 'Память'],
             ] as const
           ).map(([id, icon, label]) => (
             <button key={id} type="button" aria-pressed={view === id} onClick={() => props.onView(id)}>
@@ -379,6 +439,7 @@ export default function Stage(props: {
           </div>
         )}
         {view === 'code' && (has ? <CodeView key={project.id + ':' + html.length} html={html} busy={props.running} onApply={(h) => props.onEdit(h, 'code')} /> : <EmptyState icon="code" title="Кода пока нет" text="Код появится, как только разработчик начнёт писать проект." />)}
+        {view === 'memory' && <MemoryPanel memory={project.memory} onChange={props.onMemory} />}
         {view === 'versions' && (
           <div className={'fxs-vwrap' + (cmp ? ' comparing' : '')}>
             <Versions project={project} onRestore={props.onRestore} onCompare={setCompare} compare={compare} />

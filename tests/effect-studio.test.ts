@@ -54,7 +54,8 @@ test('the agent timeline folds pipeline events', () => {
   assert.equal(run.steps[0].status, 'done');
   assert.equal(run.steps[0].output, '{"name":');
   assert.equal(run.steps.find((s) => s.id === 'developer')!.chars, 2048);
-  assert.equal(run.steps.at(-1)!.title, 'Разработчик · исправления');
+  assert.equal(run.steps.find((s) => s.id === 'fix-1')!.title, 'Разработчик · исправления');
+  assert.ok(run.steps.findIndex((s) => s.id === 'fix-1') < run.steps.findIndex((s) => s.id === 'developer'), 'unplanned steps are shown where they ran');
   assert.equal(run.steps.find((s) => s.id === 'designer')!.status, 'skipped');
   const done = applyEvent(run, { type: 'done', intent: 'new', kind: 'game', reply: 'ok', usage: { input: 1, output: 2 } }, 99);
   assert.equal(done.status, 'done');

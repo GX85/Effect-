@@ -74,6 +74,70 @@ function modelName(ref, catalog) {
 }
 var effortName = (e) => EFFORTS.find((x) => x.id === e)?.name ?? "\u0410\u0432\u0442\u043E";
 
+// lib/effect/motion-kit.ts
+var MOTION_CSS = `<style id="fx-motion-css">
+:root{--fx-spring:cubic-bezier(.2,.9,.25,1.12);--fx-out:cubic-bezier(.2,.8,.2,1)}
+@view-transition{navigation:auto}
+@media (prefers-reduced-motion:no-preference){html{scroll-behavior:smooth}}
+:where(button,[role=button],.btn,.button,input[type=submit],input[type=button],[data-press]){transition:transform .38s var(--fx-spring),box-shadow .38s var(--fx-out),background-color .2s,color .2s,opacity .2s;-webkit-tap-highlight-color:transparent}
+:where(button,[role=button],.btn,.button,input[type=submit],input[type=button],[data-press]):active:not(:disabled){transform:scale(.96);transition-duration:.08s}
+:where(.card,[data-lift]){transition:transform .5s var(--fx-spring),box-shadow .5s var(--fx-out)}
+:where(a.card,.card[onclick],[data-lift]):active{transform:scale(.985);transition-duration:.1s}
+@media (hover:hover) and (pointer:fine){:where(.card,[data-lift]):hover{transform:translateY(-4px);box-shadow:0 22px 50px rgba(0,0,0,.14)}}
+:where(a,button,input,select,textarea,summary,[tabindex]):focus-visible{outline:2px solid var(--fx-accent,var(--accent,currentColor));outline-offset:3px}
+html.fx-js [data-reveal]{opacity:0;transform:translateY(26px);transition:opacity .7s var(--fx-out),transform .95s var(--fx-spring);transition-delay:calc(var(--fx-i,0) * 70ms)}
+html.fx-js [data-reveal].fx-in{opacity:1;transform:none}
+#fx-intro{position:fixed;inset:0;z-index:2147483000;display:grid;place-items:center;background:var(--fx-bg,var(--bg,#fff));pointer-events:none;animation:fx-intro-out .34s var(--fx-out) .26s forwards}
+#fx-intro i{width:34px;height:34px;border-radius:50%;border:3px solid rgba(127,127,127,.22);border-top-color:var(--fx-accent,var(--accent,#0a84ff));animation:fx-spin .7s linear infinite}
+@keyframes fx-intro-out{to{opacity:0;visibility:hidden}}
+@keyframes fx-spin{to{transform:rotate(1turn)}}
+.fx-toasts{position:fixed;left:50%;bottom:max(20px,env(safe-area-inset-bottom));z-index:2147483001;display:grid;gap:8px;justify-items:center;transform:translateX(-50%);pointer-events:none}
+.fx-toast{max-width:min(440px,calc(100vw - 32px));padding:12px 18px;border-radius:16px;background:rgba(22,22,26,.94);color:#fff;font:500 15px/1.35 system-ui,-apple-system,sans-serif;box-shadow:0 14px 40px rgba(0,0,0,.28);animation:fx-toast-in .5s var(--fx-spring) both}
+.fx-toast.out{animation:fx-toast-out .3s var(--fx-out) forwards}
+@keyframes fx-toast-in{from{opacity:0;transform:translateY(14px) scale(.94)}}
+@keyframes fx-toast-out{to{opacity:0;transform:translateY(8px) scale(.97)}}
+::view-transition-old(root),::view-transition-new(root){animation-duration:.34s;animation-timing-function:var(--fx-out)}
+@media (prefers-reduced-motion:reduce){#fx-intro{display:none}html.fx-js [data-reveal]{opacity:1;transform:none;transition:none}*,*::before,*::after{animation-duration:1ms!important;animation-iteration-count:1!important;transition-duration:1ms!important;scroll-behavior:auto!important}}
+</style>`;
+var MOTION_INTRO = '<div id="fx-intro" aria-hidden="true"><i></i></div>';
+var MOTION_JS = `<script id="fx-motion">(function(){var d=document,h=d.documentElement;h.classList.add('fx-js');
+var R=false;try{R=matchMedia('(prefers-reduced-motion: reduce)').matches}catch(e){}
+var io=null;try{io=R?null:new IntersectionObserver(function(es){es.forEach(function(e){if(!e.isIntersecting)return;var t=e.target;t.classList.add('fx-in');if(t.hasAttribute('data-count-to'))count(t);if(t.hasAttribute('data-progress'))bar(t);io.unobserve(t)})},{rootMargin:'0px 0px -6% 0px'})}catch(e){}
+function show(t){t.classList.add('fx-in');if(t.hasAttribute('data-count-to'))count(t);if(t.hasAttribute('data-progress'))bar(t)}
+function count(el){if(el.__fx)return;el.__fx=1;var to=parseFloat(el.getAttribute('data-count-to'))||0,dec=(String(el.getAttribute('data-count-to')).split('.')[1]||'').length,suf=el.getAttribute('data-suffix')||'',pre=el.getAttribute('data-prefix')||'';if(R){el.textContent=pre+to.toLocaleString(d.documentElement.lang||undefined,{minimumFractionDigits:dec,maximumFractionDigits:dec})+suf;return}var t0=0;function f(t){if(!t0)t0=t;var k=Math.min(1,(t-t0)/1400),v=to*(1-Math.pow(1-k,3));el.textContent=pre+v.toLocaleString(d.documentElement.lang||undefined,{minimumFractionDigits:dec,maximumFractionDigits:dec})+suf;if(k<1)requestAnimationFrame(f)}requestAnimationFrame(f)}
+function bar(el){var v=Math.max(0,Math.min(100,parseFloat(el.getAttribute('data-progress'))||0));el.style.transformOrigin='left center';el.style.transform='scaleX('+(R?v/100:0)+')';if(!R){el.style.transition='transform 1.2s cubic-bezier(.2,.8,.2,1)';requestAnimationFrame(function(){requestAnimationFrame(function(){el.style.transform='scaleX('+v/100+')'})})}}
+function prep(){try{[].forEach.call(d.querySelectorAll('[data-stagger]'),function(g){[].forEach.call(g.children,function(c,i){if(!c.hasAttribute('data-reveal'))c.setAttribute('data-reveal','');c.style.setProperty('--fx-i',Math.min(i,12))})});
+[].forEach.call(d.querySelectorAll('[data-reveal]:not(.fx-in),[data-count-to],[data-progress]'),function(el){if(el.__fxo)return;el.__fxo=1;if(io)io.observe(el);else show(el)})}catch(e){}}
+function safety(){[].forEach.call(d.querySelectorAll('[data-reveal]:not(.fx-in)'),function(el){var r=el.getBoundingClientRect();if(r.top<innerHeight&&r.bottom>0)show(el)})}
+var mo;try{mo=new MutationObserver(function(){clearTimeout(mo.t);mo.t=setTimeout(prep,60)});}catch(e){}
+function start(){prep();if(mo)mo.observe(d.body,{childList:true,subtree:true});setTimeout(safety,1600)}
+if(d.readyState==='loading')d.addEventListener('DOMContentLoaded',start);else start();
+function vt(fn){if(d.startViewTransition&&!R){try{return d.startViewTransition(fn)}catch(e){}}fn()}
+d.addEventListener('click',function(e){var a=e.target&&e.target.closest&&e.target.closest('a[href^="#/"]');if(!a||e.defaultPrevented||e.button||e.metaKey||e.ctrlKey||e.shiftKey||!d.startViewTransition||R)return;var href=a.getAttribute('href');if(location.hash===href)return;e.preventDefault();vt(function(){return new Promise(function(res){var done=0;function fin(){if(!done){done=1;requestAnimationFrame(function(){res()})}}addEventListener('hashchange',fin,{once:true});setTimeout(fin,350);location.hash=href})})});
+var box;function toast(msg,ms){try{if(!box){box=d.createElement('div');box.className='fx-toasts';box.setAttribute('role','status');box.setAttribute('aria-live','polite');d.body.appendChild(box)}var t=d.createElement('div');t.className='fx-toast';t.textContent=String(msg);box.appendChild(t);setTimeout(function(){t.classList.add('out');setTimeout(function(){t.remove()},320)},ms||2600)}catch(e){}}
+window.FXMotion={toast:toast,go:vt,reveal:prep,reduced:R};
+})();</script>`;
+var MOTION_DOC = `Effect Motion Kit is injected into every page automatically \u2014 do not re-implement or remove it, build on it:
+- Add data-reveal to sections, cards and headings so they rise in on scroll; put data-stagger on a grid/list to stagger its children.
+- Buttons, [role=button], .btn and inputs of type submit get spring press feedback automatically; give clickable cards class "card" (or data-lift) for hover lift and press.
+- Animated numbers: <span data-count-to="1200" data-suffix="+">0</span>; progress bars: an inner element with data-progress="72" (it animates scaleX, so give it width:100%).
+- Hash-router pages: link with href="#/page" \u2014 page changes get a View Transition automatically; for custom DOM swaps call FXMotion.go(() => render()).
+- After a form action call FXMotion.toast('\u0417\u0430\u044F\u0432\u043A\u0430 \u043E\u0442\u043F\u0440\u0430\u0432\u043B\u0435\u043D\u0430') (plus an inline success state).
+- Set --fx-accent and --fx-bg in :root so the brief intro loader and focus rings match the brand.
+- Your own motion must animate only transform and opacity, and respect prefers-reduced-motion.`;
+var strip = (html) => html.replace(/<style id="fx-motion-css">[\s\S]*?<\/style>/g, "").replace(/<script id="fx-motion">[\s\S]*?<\/script>/g, "").replace(/<div id="fx-intro"[^>]*>[\s\S]*?<\/div>/g, "");
+function withMotionKit(html, opts = {}) {
+  let out = strip(html);
+  const headEnd = out.search(/<\/head>/i);
+  out = headEnd >= 0 ? out.slice(0, headEnd) + MOTION_CSS + out.slice(headEnd) : MOTION_CSS + out;
+  if (opts.intro !== false) {
+    const body = out.match(/<body[^>]*>/i);
+    if (body && body.index != null) out = out.slice(0, body.index + body[0].length) + MOTION_INTRO + out.slice(body.index + body[0].length);
+  }
+  const bodyEnd = out.toLowerCase().lastIndexOf("</body>");
+  return bodyEnd >= 0 ? out.slice(0, bodyEnd) + MOTION_JS + out.slice(bodyEnd) : out + MOTION_JS;
+}
+
 // lib/effect/agent/prompts.ts
 var MAX_CONTEXT_HTML = 18e4;
 var IDENTITY = "You are part of Effect, an AI product studio. A team of agents (Architect, Designer, Developer, Tester) turns a person's words into a finished, production-quality web project delivered as one self-contained HTML file.";
@@ -115,7 +179,8 @@ var OUTPUT_RULES = `Output rules:
 - All visible copy in the language of the person's request (Russian if they write Russian). Specific, believable copy; never lorem ipsum, never "Coming soon" placeholders for requested features.
 - The file runs in a sandboxed iframe: wrap every localStorage access in try/catch; never use alert(), confirm(), prompt(), window.open() or form submissions to a server; guard requestFullscreen.
 - Responsive from 360px to 1920px with no horizontal scrolling. Accessible: semantic landmarks, labelled controls, alt text, visible focus, sufficient contrast, prefers-reduced-motion respected.
-- Code quality: no console errors, no unfinished functions, every button does something.`;
+- Code quality: no console errors, no unfinished functions, every button does something.
+- Never animate width, height, top, left or margins \u2014 transform and opacity only, so phones stay at 60 FPS.`;
 var DESIGN_BAR = `Design bar: Apple-grade polish. Generous whitespace, confident typography with tight display tracking, a clear type scale, continuous rounded corners (use border-radius and, inside @supports (corner-shape: squircle), corner-shape: squircle), soft layered shadows, translucent surfaces only where they help, subtle depth. Motion: spring-like easing (cubic-bezier(.2,.9,.25,1.1)), staggered reveals, hover/press micro-interactions on transform and opacity only.`;
 function trimHtml(html, max = MAX_CONTEXT_HTML) {
   if (!html) return "";
@@ -131,8 +196,16 @@ function historyText(ctx) {
 }
 function checksText(checks) {
   const bad = (checks || []).filter((c) => !c.ok);
-  if (!bad.length) return "Automatic checks: all passed.";
-  return "Automatic checks found:\n" + bad.map((c) => `- [${c.severity}] ${c.message}`).join("\n");
+  const runtime = bad.filter((c) => c.id.startsWith("runtime-"));
+  const stat = bad.filter((c) => !c.id.startsWith("runtime-"));
+  const ran = (checks || []).some((c) => c.id.startsWith("runtime-"));
+  const parts = [];
+  parts.push(stat.length ? "Automatic checks found:\n" + stat.map((c) => `- [${c.severity}] ${c.message}`).join("\n") : "Automatic checks: all passed.");
+  if (ran) parts.push(runtime.length ? "Runtime facts (measured in a browser at 390px and 1440px):\n" + runtime.map((c) => `- [${c.severity}] ${c.message}`).join("\n") : "Runtime facts: no errors, no overflow, no accessibility problems found in a browser at 390px and 1440px.");
+  return parts.join("\n\n");
+}
+function memoryBlock(ctx) {
+  return ctx.memory ? "\n\nProject memory (stay consistent with it):\n" + ctx.memory.slice(0, 3e3) : "";
 }
 function reportText(report) {
   if (!report) return "";
@@ -161,9 +234,11 @@ Reply with ONLY a JSON object, no prose:
 var DEVELOPER = `${IDENTITY}
 You are the DEVELOPER, a senior front-end and game engineer. Implement the project completely in one HTML file, following the specification and the design system exactly (use the palette as CSS custom properties, the fonts, the scale, the radii and the motion).
 ${OUTPUT_RULES}
-${DESIGN_BAR}`;
+${DESIGN_BAR}
+Cosmetics are part of done: hover and press states on every control and card, scroll reveals with stagger, smooth anchor scrolling, animated counters or progress where numbers appear, page transitions for multi-page navigation, visible focus, toast or inline feedback after every form action.
+${MOTION_DOC}`;
 var TESTER = `${IDENTITY}
-You are the TESTER, a meticulous QA engineer. Review the HTML below as if you ran it at 390px (phone) and 1440px (desktop) wide. Find real problems only: JavaScript errors and broken logic, features from the spec that are missing or fake, buttons and links that do nothing, layout that overflows or overlaps at 390px or 1440px, unreadable contrast, missing labels or alt text, keyboard traps, games that cannot be won/lost/restarted or lack touch controls.
+You are the TESTER, a meticulous QA engineer. Review the HTML below as if you ran it at 390px (phone) and 1440px (desktop) wide. The "Runtime facts" were measured in a real browser \u2014 trust them over your reading of the code and turn each serious one into an issue. Find real problems only: JavaScript errors and broken logic, features from the spec that are missing or fake, buttons and links that do nothing, layout that overflows or overlaps at 390px or 1440px, unreadable contrast, missing labels or alt text, keyboard traps, games that cannot be won/lost/restarted or lack touch controls, missing polish (no reveal on long pages, clickable cards without class "card", forms without success feedback).
 Reply with ONLY a JSON object, no prose:
 {"verdict": "pass|fix", "summary": "one sentence", "issues": [{"severity": "critical|major|minor", "area": "where", "problem": "what is wrong", "fix": "exact instruction for the developer"}]}
 Use "fix" only if there is at least one critical or major issue. At most 10 issues, most important first.`;
@@ -191,6 +266,9 @@ function buildMessages(role, ctx) {
 Latest message:
 ${req}` }
       ];
+    case "audit":
+    case "playtester":
+      return [{ role: "user", content: req }];
     case "architect":
       return [
         { role: "system", content: ARCHITECT },
@@ -217,7 +295,7 @@ ${req}` }
             role: "user",
             content: `Here is the current ${kind} "${ctx.projectName || ""}":
 
-${trimHtml(ctx.html)}${spec}${design}${hist}
+${trimHtml(ctx.html)}${spec}${design}${memoryBlock(ctx)}${hist}
 
 Apply this change and return the FULL updated HTML document. Keep everything that was not asked to change exactly as it is (content, features, design), and keep the design system consistent:
 ${req}`
@@ -231,7 +309,7 @@ ${req}`
             role: "user",
             content: `Here is the current ${kind}:
 
-${trimHtml(ctx.html)}${spec}
+${trimHtml(ctx.html)}${spec}${memoryBlock(ctx)}
 
 The ${ctx.round && ctx.round > 1 ? "next review round" : "review"} found these problems:
 ${reportText(ctx.report)}
@@ -260,7 +338,7 @@ ${req}`
         { role: "system", content: TESTER },
         {
           role: "user",
-          content: `Project type: ${kind}.${spec}
+          content: `Project type: ${kind}.${spec}${memoryBlock(ctx)}
 
 Request:
 ${req}
@@ -287,7 +365,7 @@ ${trimHtml(ctx.html, 14e4)}` }
         { role: "system", content: ANSWER },
         {
           role: "user",
-          content: (ctx.html ? `Open project "${ctx.projectName || ""}" (${KIND_LABELS[ctx.kind]}).${spec}
+          content: (ctx.html ? `Open project "${ctx.projectName || ""}" (${KIND_LABELS[ctx.kind]}).${spec}${memoryBlock(ctx)}
 
 Code excerpt:
 ${trimHtml(ctx.html, 4e4)}` : "No project is open yet.") + `${hist}
@@ -379,7 +457,9 @@ var STEP_TITLES = {
   tester: "\u0422\u0435\u0441\u0442\u0438\u0440\u043E\u0432\u0449\u0438\u043A",
   reviewer: "\u0420\u0435\u0432\u044C\u044E\u0435\u0440",
   answer: "\u041E\u0442\u0432\u0435\u0442",
-  router: "\u0420\u043E\u0443\u0442\u0435\u0440"
+  router: "\u0420\u043E\u0443\u0442\u0435\u0440",
+  audit: "\u0414\u0438\u0430\u0433\u043D\u043E\u0441\u0442\u0438\u043A\u0430",
+  playtester: "\u041F\u043B\u0435\u0439\u0442\u0435\u0441\u0442\u0435\u0440"
 };
 var stepTitle = (role) => STEP_TITLES[role];
 function route(text, opts = {}) {
@@ -492,6 +572,9 @@ function staticChecks(html, kind, syntax = null) {
   const imgNoAlt = [...html.matchAll(/<img(?![^>]*\salt=)[^>]*>/gi)].length;
   add("alt", imgNoAlt === 0, "minor", `${imgNoAlt} <img> without alt.`);
   add("lorem", !/lorem ipsum/i.test(html), "major", "Contains lorem ipsum placeholder text.");
+  const css = [...html.matchAll(/<style[^>]*>([\s\S]*?)<\/style>/gi)].map((m) => m[1]).join("\n");
+  const layoutAnim = /transition\s*:[^;{}]*\b(width|height|top|left|right|bottom|margin[\w-]*|padding[\w-]*)\b/i.test(css);
+  add("layout-animation", !layoutAnim, "minor", "Transitions animate layout properties (width/height/top/left/margin); use transform and opacity for smooth phones.");
   if (kind === "game") {
     add("raf", /requestAnimationFrame/.test(html), "critical", "Game has no requestAnimationFrame loop.");
     add("touch", /touchstart|pointerdown|pointermove/.test(lower), "major", "Game has no touch / pointer controls for phones.");
@@ -507,6 +590,60 @@ function staticChecks(html, kind, syntax = null) {
   return out;
 }
 var failedChecks = (checks) => checks.filter((c) => !c.ok);
+
+// lib/effect/audit.ts
+function auditChecks(reports) {
+  const out = [];
+  const at = (r) => r.width + "px";
+  const errors = /* @__PURE__ */ new Map();
+  for (const r of reports) {
+    if (r.timeout) {
+      out.push({ id: "runtime-timeout-" + r.width, ok: false, severity: "major", message: `The page did not finish loading within the audit time at ${at(r)} (an endless loop or a blocking script?).` });
+      continue;
+    }
+    for (const e of r.errors) errors.set(e, [...errors.get(e) ?? [], r.width]);
+    if (r.overflow.px > 1)
+      out.push({ id: "runtime-overflow-" + r.width, ok: false, severity: "major", message: `Horizontal overflow of ${r.overflow.px}px at ${at(r)}` + (r.overflow.offenders.length ? `; widest elements: ${r.overflow.offenders.join("; ")}` : "") + "." });
+    if (r.lowContrast.length)
+      out.push({
+        id: "runtime-contrast-" + r.width,
+        ok: false,
+        severity: r.lowContrast.length >= 3 ? "major" : "minor",
+        message: `Low-contrast text at ${at(r)}: ` + r.lowContrast.slice(0, 5).map((c) => `${c.el} ${c.ratio}:1 (${c.fg} on ${c.bg})`).join("; ") + "."
+      });
+    if (r.unlabeled.length) out.push({ id: "runtime-labels-" + r.width, ok: false, severity: "major", message: `Controls without an accessible name at ${at(r)}: ${r.unlabeled.slice(0, 5).join("; ")}.` });
+    if (r.hidden && r.hidden.length) out.push({ id: "runtime-hidden-" + r.width, ok: false, severity: "major", message: `Content in the first screen is still invisible after load at ${at(r)}: ${r.hidden.slice(0, 4).join("; ")} (a reveal that never fires?).` });
+    if (r.intro) out.push({ id: "runtime-intro-" + r.width, ok: false, severity: "major", message: `The intro loader still covers the page after load at ${at(r)}.` });
+    if (r.longTasks.ms > 250) out.push({ id: "runtime-longtasks-" + r.width, ok: false, severity: "minor", message: `${r.longTasks.count} long task(s), ${r.longTasks.ms}ms in total at ${at(r)}.` });
+  }
+  for (const [e, widths] of errors) out.push({ id: "runtime-error", ok: false, severity: "critical", message: `${e} (at ${widths.join(" and ")}px)` });
+  const first = reports.find((r) => !r.timeout);
+  if (first?.brokenAnchors.length) out.push({ id: "runtime-anchors", ok: false, severity: "major", message: `Links to missing anchors: ${first.brokenAnchors.join(", ")}.` });
+  if (first && first.missingAlt) out.push({ id: "runtime-alt", ok: false, severity: "minor", message: `${first.missingAlt} image(s) without alt.` });
+  const dedupe = /* @__PURE__ */ new Map();
+  for (const c of out) {
+    const key = c.id.replace(/-\d+$/, "") + "|" + c.message.replace(/at \d+px/, "");
+    if (!dedupe.has(key)) dedupe.set(key, c);
+  }
+  return [...dedupe.values()];
+}
+function auditSummary(reports) {
+  if (!reports.length) return "\u0414\u0438\u0430\u0433\u043D\u043E\u0441\u0442\u0438\u043A\u0430 \u043D\u0435\u0434\u043E\u0441\u0442\u0443\u043F\u043D\u0430";
+  return reports.map((r) => {
+    if (r.timeout) return `${r.width}px: \u0441\u0442\u0440\u0430\u043D\u0438\u0446\u0430 \u043D\u0435 \u0437\u0430\u0433\u0440\u0443\u0437\u0438\u043B\u0430\u0441\u044C`;
+    const parts = [];
+    parts.push(r.errors.length ? `\u043E\u0448\u0438\u0431\u043E\u043A ${r.errors.length}` : "\u0431\u0435\u0437 \u043E\u0448\u0438\u0431\u043E\u043A");
+    if (r.overflow.px > 1) parts.push(`\u043F\u0435\u0440\u0435\u043F\u043E\u043B\u043D\u0435\u043D\u0438\u0435 ${r.overflow.px}px`);
+    if (r.lowContrast.length) parts.push(`\u043A\u043E\u043D\u0442\u0440\u0430\u0441\u0442 \xD7${r.lowContrast.length}`);
+    if (r.unlabeled.length) parts.push(`\u0431\u0435\u0437 \u043F\u043E\u0434\u043F\u0438\u0441\u0438 \xD7${r.unlabeled.length}`);
+    return `${r.width}px: ${parts.join(", ")}`;
+  }).join(" \xB7 ");
+}
+function auditOutput(reports) {
+  const checks = auditChecks(reports);
+  if (!checks.length) return "\u041E\u0448\u0438\u0431\u043E\u043A, \u043F\u0435\u0440\u0435\u043F\u043E\u043B\u043D\u0435\u043D\u0438\u044F, \u0431\u0438\u0442\u044B\u0445 \u044F\u043A\u043E\u0440\u0435\u0439 \u0438 \u043F\u0440\u043E\u0431\u043B\u0435\u043C \u0434\u043E\u0441\u0442\u0443\u043F\u043D\u043E\u0441\u0442\u0438 \u043D\u0435 \u043D\u0430\u0439\u0434\u0435\u043D\u043E.";
+  return checks.map((c) => `\u2022 [${c.severity}] ${c.message}`).join("\n");
+}
 
 // lib/effect/agent/pipeline.ts
 var FATAL = /* @__PURE__ */ new Set([
@@ -611,8 +748,10 @@ async function runPipeline(input) {
       intent: route2.intent,
       projectName: project?.name,
       history: project?.history,
-      ultra: route2.effort === "ultra"
+      ultra: route2.effort === "ultra",
+      memory: route2.intent === "new" ? void 0 : project?.memory
     };
+    const polish = (h) => withMotionKit(h, { intro: route2.kind !== "game" });
     const runStep = async (plan, ctx, mode, id = plan.id) => {
       const started = now();
       emit({ type: "step", id, role: plan.role, status: "start", title: plan.title, model: plan.model, at: started });
@@ -715,6 +854,7 @@ async function runPipeline(input) {
     const devCtx = { ...base, kind: route2.kind, spec, design, html: route2.intent === "edit" ? project.html : void 0 };
     const built = await runStep(dev, devCtx, "html");
     let html = extractHtml(built.text);
+    if (html) html = polish(html);
     if (!html) {
       const err = new AgentError("no_html", "\u041C\u043E\u0434\u0435\u043B\u044C \u043D\u0435 \u0432\u0435\u0440\u043D\u0443\u043B\u0430 HTML. \u041F\u043E\u043F\u0440\u043E\u0431\u0443\u0439\u0442\u0435 \u0435\u0449\u0451 \u0440\u0430\u0437 \u0438\u043B\u0438 \u0432\u044B\u0431\u0435\u0440\u0438\u0442\u0435 \u0434\u0440\u0443\u0433\u0443\u044E \u043C\u043E\u0434\u0435\u043B\u044C.");
       emit({ type: "step", id: dev.id, status: "error", message: err.message });
@@ -729,7 +869,24 @@ async function runPipeline(input) {
     });
     emit({ type: "html", html, final: false });
     let report = null;
-    let checks = staticChecks(html, route2.kind, input.syntax ?? null);
+    let runtime = [];
+    let audits = 0;
+    const diagnose = async () => {
+      if (!input.diagnose || signal?.aborted) return [];
+      const id = audits++ ? "audit-" + audits : "audit";
+      const started = now();
+      emit({ type: "step", id, role: "audit", status: "start", title: "\u0414\u0438\u0430\u0433\u043D\u043E\u0441\u0442\u0438\u043A\u0430", model: "browser", at: started });
+      try {
+        const reports = await input.diagnose(html, route2.kind);
+        emit({ type: "step", id, status: "done", ms: now() - started, summary: auditSummary(reports), output: auditOutput(reports) });
+        return auditChecks(reports);
+      } catch {
+        emit({ type: "step", id, status: "skipped", reason: "\u041D\u0435 \u0443\u0434\u0430\u043B\u043E\u0441\u044C \u0437\u0430\u043F\u0443\u0441\u0442\u0438\u0442\u044C \u043F\u0440\u043E\u0432\u0435\u0440\u043A\u0443 \u0432 \u0431\u0440\u0430\u0443\u0437\u0435\u0440\u0435" });
+        return [];
+      }
+    };
+    runtime = await diagnose();
+    let checks = [...staticChecks(html, route2.kind, input.syntax ?? null), ...runtime];
     const tester = planOf("tester");
     let round = 0;
     const test = async (id) => {
@@ -750,8 +907,9 @@ async function runPipeline(input) {
       const r = await runStep(plan, { ...base, kind: route2.kind, spec, design, html, report: rep, round, intent: route2.intent }, "html", id);
       const next = extractHtml(r.text);
       if (next && (isComplete(next) || !isComplete(html))) {
-        html = next;
-        checks = staticChecks(html, route2.kind, input.syntax ?? null);
+        html = polish(next);
+        runtime = await diagnose();
+        checks = [...staticChecks(html, route2.kind, input.syntax ?? null), ...runtime];
         emit({ type: "step", id, status: "done", ms: r.ms, summary: "\u0418\u0441\u043F\u0440\u0430\u0432\u043B\u0435\u043D\u043E \xB7 " + Math.max(1, Math.round(html.length / 1024)) + " \u041A\u0411" });
         emit({ type: "html", html, final: false });
       } else {
@@ -771,7 +929,8 @@ async function runPipeline(input) {
     } else {
       emit({ type: "step", id: "tester", status: "skipped", reason: "\u041D\u0435\u0431\u043E\u043B\u044C\u0448\u0430\u044F \u043F\u0440\u0430\u0432\u043A\u0430 \u2014 \u0445\u0432\u0430\u0442\u0438\u043B\u043E \u0430\u0432\u0442\u043E\u043C\u0430\u0442\u0438\u0447\u0435\u0441\u043A\u0438\u0445 \u043F\u0440\u043E\u0432\u0435\u0440\u043E\u043A" });
       const bad = withChecks(null, checks);
-      if (bad && route2.fixRounds > 0) await fix(bad, "fix-1", "\u0420\u0430\u0437\u0440\u0430\u0431\u043E\u0442\u0447\u0438\u043A \xB7 \u0438\u0441\u043F\u0440\u0430\u0432\u043B\u0435\u043D\u0438\u044F");
+      const critical = bad?.issues.some((i) => i.severity === "critical");
+      if (bad && (route2.fixRounds > 0 || critical)) await fix(bad, "fix-1", "\u0420\u0430\u0437\u0440\u0430\u0431\u043E\u0442\u0447\u0438\u043A \xB7 \u0438\u0441\u043F\u0440\u0430\u0432\u043B\u0435\u043D\u0438\u044F");
     }
     const reviewer = planOf("reviewer");
     if (reviewer && !signal?.aborted) {

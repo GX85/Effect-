@@ -7,6 +7,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { flushSync } from 'react-dom';
 import { runPipeline } from '@/lib/effect/agent/pipeline';
+import { updateMemory, type Memory } from '@/lib/effect/brain';
+import { makeDiagnose } from './diagnose';
 import { isEffort, modelName, parseModel } from '@/lib/effect/agent/models';
 import type { AgentEvent, EffortId } from '@/lib/effect/agent/types';
 import {
@@ -263,6 +265,7 @@ export default function Studio({ engine, onExit, initialPrompt, siteUrl, prismUr
           patch(targetId, (p) => {
             let next: Project = {
               ...p,
+              memory: updateMemory(p.memory, { intent: e.intent, request: text, spec: e.spec, design: e.design }, at),
               messages: p.messages.map((m) => (m.id === reply.id ? { ...m, text: e.reply, at, run: m.run ? applyEvent(m.run, e, at) : m.run } : m)),
               updated: at,
             };
@@ -307,6 +310,7 @@ export default function Studio({ engine, onExit, initialPrompt, siteUrl, prismUr
           onEvent,
           signal: ctl.signal,
           syntax: cur.engine.syntax ?? null,
+          diagnose: makeDiagnose(),
         });
       } finally {
         runRef.current = null;
@@ -397,6 +401,8 @@ export default function Studio({ engine, onExit, initialPrompt, siteUrl, prismUr
     },
     [current, patch, flash],
   );
+
+  const setMemory = useCallback((m: Memory) => current && patch(current.id, (p) => ({ ...p, memory: m })), [current, patch]);
 
   const editHtml = useCallback(
     (html: string, source: 'text' | 'code') => {
@@ -568,6 +574,7 @@ export default function Studio({ engine, onExit, initialPrompt, siteUrl, prismUr
             onDevice={setDevice}
             onEdit={editHtml}
             onRestore={restore}
+            onMemory={setMemory}
             onDownload={download}
             onCopy={copy}
             flash={flash}

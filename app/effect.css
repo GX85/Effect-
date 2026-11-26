@@ -2416,3 +2416,118 @@ html.fxs-root body {
 .fxs .fxs-composer textarea:focus-visible {
   outline: none;
 }
+
+/* Effect Brain (memory view) */
+.fxs-memory {
+  flex: 1;
+  min-width: 0;
+  overflow-y: auto;
+  display: grid;
+  align-content: start;
+  gap: 22px;
+  padding: 20px;
+  animation: fxs-in 420ms var(--spring) backwards;
+}
+.fxs-memory h3 {
+  margin: 0 0 8px;
+  color: var(--mist);
+  font-size: 12px;
+  font-weight: 650;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+.fxs-memory textarea {
+  width: 100%;
+  padding: 12px 14px;
+  border: 1px solid var(--line2);
+  border-radius: var(--r-md);
+  background: var(--raise);
+  color: var(--snow);
+  font-size: 14px;
+  line-height: 1.5;
+  resize: vertical;
+  outline: none;
+}
+.fxs-memory textarea:focus {
+  border-color: rgba(75, 163, 255, 0.7);
+}
+.fxs-tokens {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+  gap: 6px;
+}
+.fxs-tokens li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  padding: 8px 10px;
+  border-radius: var(--r-sm);
+  background: var(--raise);
+  box-shadow: var(--hl);
+  font-size: 13px;
+}
+.fxs-tokens i {
+  width: 18px;
+  height: 18px;
+  flex: none;
+  border-radius: 6px;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.15);
+}
+.fxs-tokens span {
+  color: var(--mist);
+}
+.fxs-tokens code {
+  margin-left: auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.fxs-decisions {
+  display: grid;
+  gap: 6px;
+}
+.fxs-decisions li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 8px 10px 14px;
+  border-radius: var(--r-md);
+  background: var(--raise);
+  box-shadow: var(--hl);
+  font-size: 14px;
+}
+.fxs-decisions span {
+  flex: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.fxs-decisions button {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border: 0;
+  border-radius: 9px;
+  background: none;
+  color: var(--haze);
+  transition:
+    background var(--fast),
+    color var(--fast),
+    transform 380ms var(--spring);
+}
+.fxs-decisions button:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--snow);
+}
+.fxs-decisions button:active {
+  transform: scale(0.9);
+}
+.fxs-muted-note {
+  color: var(--haze);
+  font-size: 13.5px;
+}
+.fxs-memory > .fxs-btn {
+  justify-self: start;
+}

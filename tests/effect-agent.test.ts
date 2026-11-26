@@ -6,6 +6,9 @@ import { buildMessages } from '../lib/effect/agent/prompts.ts';
 import { extractHtml, parseJson, staticChecks, stitch, titleOf, defaultSyntaxCheck } from '../lib/effect/agent/html.ts';
 import { MODELS, modelName, parseModel } from '../lib/effect/agent/models.ts';
 import { AgentError, type AgentEvent, type CallFn, type Msg } from '../lib/effect/agent/types.ts';
+import { withMotionKit, hasMotionKit } from '../lib/effect/motion-kit.ts';
+
+const KIT = (h: string) => withMotionKit(h);
 
 const PAGE = (body = '<h1>Луна</h1>') =>
   `<!doctype html><html lang="ru"><head><meta name="viewport" content="width=device-width,initial-scale=1"><title>Луна — кофейня</title></head><body>${body}<script>let a=1;</script></body></html>`;
@@ -147,7 +150,8 @@ test('new project runs architect → designer → developer → tester and stops
   const done = await runPipeline({ request: 'Сайт для кофейни «Луна» с меню и бронированием', call, onEvent, choice: {} });
   assert.ok(done);
   assert.equal(done!.intent, 'new');
-  assert.equal(done!.html, PAGE());
+  assert.equal(done!.html, KIT(PAGE()));
+  assert.ok(hasMotionKit(done!.html!));
   assert.equal(done!.name, 'Луна');
   assert.equal(done!.spec?.name, 'Луна');
   assert.equal(done!.design?.direction, 'Тёплый минимализм');
@@ -175,7 +179,7 @@ test('a cut-off developer answer is continued and stitched', async () => {
   });
   const { onEvent } = collect();
   const done = await runPipeline({ request: 'Сайт', call, onEvent, choice: { effort: 'thoughtful' } });
-  assert.equal(done!.html, full);
+  assert.equal(done!.html, KIT(full));
   const dev = log.filter((l) => l.role === 'developer');
   assert.equal(dev.length, 2);
   assert.equal(dev[1].messages.at(-2)!.role, 'assistant');
@@ -194,7 +198,7 @@ test('tester issues trigger a developer fix round, at most the planned number', 
   });
   const { events, onEvent } = collect();
   const done = await runPipeline({ request: 'Лендинг онлайн-школы', call, onEvent, choice: { effort: 'deep' } });
-  assert.equal(done!.html, fixed);
+  assert.equal(done!.html, KIT(fixed));
   assert.deepEqual(log.map((l) => l.role), ['architect', 'designer', 'developer', 'tester', 'developer', 'tester']);
   assert.match(log[4].messages[1].content, /no touch controls/);
   assert.ok(events.some((e) => e.type === 'step' && e.status === 'start' && e.id === 'fix-1'));
@@ -244,7 +248,7 @@ test('fatal transport errors stop the run with a coded error; partial HTML is co
     return { text: full.slice(2500), truncated: false };
   };
   const done = await runPipeline({ request: 'Сайт', call: flaky, onEvent: () => {}, choice: { effort: 'thoughtful' } });
-  assert.equal(done!.html, full);
+  assert.equal(done!.html, KIT(full));
 });
 
 test('aborting stops the pipeline as cancelled', async () => {

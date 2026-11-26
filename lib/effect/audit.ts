@@ -16,6 +16,12 @@ export type AuditReport = {
   missingAlt: number;
   unlabeled: string[];
   longTasks: { count: number; ms: number };
+  /** Text elements in the first screen that are still invisible after load. */
+  hidden?: string[];
+  /** The intro loader still covers the page. */
+  intro?: boolean;
+  /** Effect Motion Kit is running. */
+  motion?: boolean;
   title?: string;
   timeout?: boolean;
 };
@@ -39,10 +45,13 @@ try{[].forEach.call(document.querySelectorAll('a[href^="#"]'),function(a){var h=
 try{var seen=0,els=document.body.querySelectorAll('h1,h2,h3,h4,p,li,a,button,span,label,td,th,small,strong,em,blockquote,figcaption,dd,dt');for(var j=0;j<els.length&&seen<500;j++){var el=els[j];var own=[].some.call(el.childNodes,function(x){return x.nodeType===3&&x.textContent.trim().length>1});if(!own)continue;var rc=el.getBoundingClientRect();if(!rc.width||!rc.height)continue;var cs=getComputedStyle(el);if(cs.visibility==='hidden'||+cs.opacity<0.3)continue;seen++;var fg=rgb(cs.color);var bg=bgOf(el);if(!fg||!bg||fg.a<0.5)continue;var L1=lum(fg),L2=lum(bg),ratio=(Math.max(L1,L2)+0.05)/(Math.min(L1,L2)+0.05);var fs=parseFloat(cs.fontSize),bold=+cs.fontWeight>=700;var need=(fs>=24||(bold&&fs>=18.66))?3:4.5;if(ratio<need&&R.lowContrast.length<8)R.lowContrast.push({el:d(el),ratio:Math.round(ratio*100)/100,fg:cs.color,bg:'rgb('+bg.r+','+bg.g+','+bg.b+')'})}}catch(e){}
 try{R.missingAlt=document.querySelectorAll('img:not([alt])').length}catch(e){}
 try{[].forEach.call(document.querySelectorAll('input,select,textarea,button,a[href]'),function(el){if(R.unlabeled.length>=8)return;var t=el.tagName.toLowerCase(),ty=(el.getAttribute('type')||'').toLowerCase();if(ty==='hidden'||el.closest('[aria-hidden="true"]'))return;if(el.getAttribute('aria-label')||el.getAttribute('aria-labelledby')||el.getAttribute('title'))return;if(t==='button'||t==='a'){if((el.textContent||'').trim()||el.querySelector('img[alt],svg title'))return;R.unlabeled.push(d(el)||t);return}if(ty==='submit'||ty==='button'||ty==='reset'){if(el.value)return}if(el.id&&document.querySelector('label[for="'+el.id+'"]'))return;if(el.closest('label'))return;R.unlabeled.push(d(el)||t)})}catch(e){}
+try{R.hidden=[];var vh=innerHeight;[].forEach.call(document.body.querySelectorAll('h1,h2,h3,p,a,button,li,img,[data-reveal]'),function(el){if(R.hidden.length>=6||el.closest('#fx-intro,[aria-hidden="true"],[hidden],dialog:not([open])'))return;var r=el.getBoundingClientRect();if(!r.width||!r.height||r.top>vh||r.bottom<0)return;var o=1,n=el;while(n&&n.nodeType===1){o*=+getComputedStyle(n).opacity;n=n.parentElement}if(o<0.05&&(el.textContent||'').trim())R.hidden.push(d(el))})}catch(e){}
+try{var it=document.getElementById('fx-intro');if(it){var cs2=getComputedStyle(it);R.intro=cs2.display!=='none'&&cs2.visibility!=='hidden'&&+cs2.opacity>0.05}}catch(e){}
+R.motion=!!window.FXMotion;
 R.title=document.title;
 try{parent.postMessage({fx:'audit',report:R},'*')}catch(e){}
 }
-function later(){setTimeout(run,900)}
+function later(){setTimeout(run,2000)}
 if(document.readyState==='complete')later();else addEventListener('load',later);
 })();</script>`;
 
@@ -76,6 +85,8 @@ export function auditChecks(reports: AuditReport[]): Check[] {
         message: `Low-contrast text at ${at(r)}: ` + r.lowContrast.slice(0, 5).map((c) => `${c.el} ${c.ratio}:1 (${c.fg} on ${c.bg})`).join('; ') + '.',
       });
     if (r.unlabeled.length) out.push({ id: 'runtime-labels-' + r.width, ok: false, severity: 'major', message: `Controls without an accessible name at ${at(r)}: ${r.unlabeled.slice(0, 5).join('; ')}.` });
+    if (r.hidden && r.hidden.length) out.push({ id: 'runtime-hidden-' + r.width, ok: false, severity: 'major', message: `Content in the first screen is still invisible after load at ${at(r)}: ${r.hidden.slice(0, 4).join('; ')} (a reveal that never fires?).` });
+    if (r.intro) out.push({ id: 'runtime-intro-' + r.width, ok: false, severity: 'major', message: `The intro loader still covers the page after load at ${at(r)}.` });
     if (r.longTasks.ms > 250) out.push({ id: 'runtime-longtasks-' + r.width, ok: false, severity: 'minor', message: `${r.longTasks.count} long task(s), ${r.longTasks.ms}ms in total at ${at(r)}.` });
   }
   for (const [e, widths] of errors) out.push({ id: 'runtime-error', ok: false, severity: 'critical', message: `${e} (at ${widths.join(' and ')}px)` });

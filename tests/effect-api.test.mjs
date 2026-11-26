@@ -207,7 +207,7 @@ test('op run streams the whole agent pipeline as events', async () => {
   assert.deepEqual(starts, ['architect', 'designer', 'developer', 'tester']);
   const done = ev.at(-1);
   assert.equal(done.type, 'done');
-  assert.equal(done.html, PAGE);
+  assert.ok(done.html.includes('<h1>Луна</h1>') && done.html.includes('id="fx-motion"'));
   assert.equal(done.name, 'Луна');
 });
 

@@ -15,7 +15,7 @@ export type EffortId = 'auto' | 'quick' | 'thoughtful' | 'deep' | 'ultra';
 export type Level = 'low' | 'medium' | 'high' | 'max';
 
 /** Agent roles. Each role has its own prompt in prompts.ts. */
-export type Role = 'router' | 'architect' | 'designer' | 'developer' | 'tester' | 'reviewer' | 'answer';
+export type Role = 'router' | 'architect' | 'designer' | 'developer' | 'tester' | 'reviewer' | 'answer' | 'audit' | 'playtester';
 
 export type Msg = { role: 'system' | 'user' | 'assistant'; content: string };
 
@@ -137,6 +137,8 @@ export type StepContext = {
   ultra?: boolean;
   /** Fix round number (1-based) for developer fix steps. */
   round?: number;
+  /** Project memory (Effect Brain) rendered as text. */
+  memory?: string;
 };
 
 export type StepStatus = 'pending' | 'running' | 'done' | 'skipped' | 'error';
@@ -172,4 +174,6 @@ export type ProjectInput = {
   spec?: Spec | null;
   design?: Design | null;
   history?: { role: 'user' | 'assistant'; text: string }[];
+  /** Project memory rendered as text. */
+  memory?: string;
 };

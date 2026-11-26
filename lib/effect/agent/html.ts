@@ -100,6 +100,9 @@ export function staticChecks(html: string, kind?: string, syntax: SyntaxCheck | 
   const imgNoAlt = [...html.matchAll(/<img(?![^>]*\salt=)[^>]*>/gi)].length;
   add('alt', imgNoAlt === 0, 'minor', `${imgNoAlt} <img> without alt.`);
   add('lorem', !/lorem ipsum/i.test(html), 'major', 'Contains lorem ipsum placeholder text.');
+  const css = [...html.matchAll(/<style[^>]*>([\s\S]*?)<\/style>/gi)].map((m) => m[1]).join('\n');
+  const layoutAnim = /transition\s*:[^;{}]*\b(width|height|top|left|right|bottom|margin[\w-]*|padding[\w-]*)\b/i.test(css);
+  add('layout-animation', !layoutAnim, 'minor', 'Transitions animate layout properties (width/height/top/left/margin); use transform and opacity for smooth phones.');
   if (kind === 'game') {
     add('raf', /requestAnimationFrame/.test(html), 'critical', 'Game has no requestAnimationFrame loop.');
     add('touch', /touchstart|pointerdown|pointermove/.test(lower), 'major', 'Game has no touch / pointer controls for phones.');

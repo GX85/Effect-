@@ -4,6 +4,7 @@
  * from the structured context, so clients never send raw system prompts.
  */
 import { KIND_LABELS } from './models.ts';
+import { MOTION_DOC } from '../motion-kit.ts';
 import type { Check, Kind, Msg, Report, Role, StepContext } from './types.ts';
 
 export const MAX_CONTEXT_HTML = 180_000;
@@ -52,7 +53,8 @@ const OUTPUT_RULES = `Output rules:
 - All visible copy in the language of the person's request (Russian if they write Russian). Specific, believable copy; never lorem ipsum, never "Coming soon" placeholders for requested features.
 - The file runs in a sandboxed iframe: wrap every localStorage access in try/catch; never use alert(), confirm(), prompt(), window.open() or form submissions to a server; guard requestFullscreen.
 - Responsive from 360px to 1920px with no horizontal scrolling. Accessible: semantic landmarks, labelled controls, alt text, visible focus, sufficient contrast, prefers-reduced-motion respected.
-- Code quality: no console errors, no unfinished functions, every button does something.`;
+- Code quality: no console errors, no unfinished functions, every button does something.
+- Never animate width, height, top, left or margins — transform and opacity only, so phones stay at 60 FPS.`;
 
 const DESIGN_BAR = `Design bar: Apple-grade polish. Generous whitespace, confident typography with tight display tracking, a clear type scale, continuous rounded corners (use border-radius and, inside @supports (corner-shape: squircle), corner-shape: squircle), soft layered shadows, translucent surfaces only where they help, subtle depth. Motion: spring-like easing (cubic-bezier(.2,.9,.25,1.1)), staggered reveals, hover/press micro-interactions on transform and opacity only.`;
 
@@ -73,8 +75,17 @@ function historyText(ctx: StepContext): string {
 
 function checksText(checks?: Check[]): string {
   const bad = (checks || []).filter((c) => !c.ok);
-  if (!bad.length) return 'Automatic checks: all passed.';
-  return 'Automatic checks found:\n' + bad.map((c) => `- [${c.severity}] ${c.message}`).join('\n');
+  const runtime = bad.filter((c) => c.id.startsWith('runtime-'));
+  const stat = bad.filter((c) => !c.id.startsWith('runtime-'));
+  const ran = (checks || []).some((c) => c.id.startsWith('runtime-'));
+  const parts: string[] = [];
+  parts.push(stat.length ? 'Automatic checks found:\n' + stat.map((c) => `- [${c.severity}] ${c.message}`).join('\n') : 'Automatic checks: all passed.');
+  if (ran) parts.push(runtime.length ? 'Runtime facts (measured in a browser at 390px and 1440px):\n' + runtime.map((c) => `- [${c.severity}] ${c.message}`).join('\n') : 'Runtime facts: no errors, no overflow, no accessibility problems found in a browser at 390px and 1440px.');
+  return parts.join('\n\n');
+}
+
+function memoryBlock(ctx: StepContext): string {
+  return ctx.memory ? '\n\nProject memory (stay consistent with it):\n' + ctx.memory.slice(0, 3000) : '';
 }
 
 function reportText(report?: Report | null): string {
@@ -107,10 +118,12 @@ Reply with ONLY a JSON object, no prose:
 const DEVELOPER = `${IDENTITY}
 You are the DEVELOPER, a senior front-end and game engineer. Implement the project completely in one HTML file, following the specification and the design system exactly (use the palette as CSS custom properties, the fonts, the scale, the radii and the motion).
 ${OUTPUT_RULES}
-${DESIGN_BAR}`;
+${DESIGN_BAR}
+Cosmetics are part of done: hover and press states on every control and card, scroll reveals with stagger, smooth anchor scrolling, animated counters or progress where numbers appear, page transitions for multi-page navigation, visible focus, toast or inline feedback after every form action.
+${MOTION_DOC}`;
 
 const TESTER = `${IDENTITY}
-You are the TESTER, a meticulous QA engineer. Review the HTML below as if you ran it at 390px (phone) and 1440px (desktop) wide. Find real problems only: JavaScript errors and broken logic, features from the spec that are missing or fake, buttons and links that do nothing, layout that overflows or overlaps at 390px or 1440px, unreadable contrast, missing labels or alt text, keyboard traps, games that cannot be won/lost/restarted or lack touch controls.
+You are the TESTER, a meticulous QA engineer. Review the HTML below as if you ran it at 390px (phone) and 1440px (desktop) wide. The "Runtime facts" were measured in a real browser — trust them over your reading of the code and turn each serious one into an issue. Find real problems only: JavaScript errors and broken logic, features from the spec that are missing or fake, buttons and links that do nothing, layout that overflows or overlaps at 390px or 1440px, unreadable contrast, missing labels or alt text, keyboard traps, games that cannot be won/lost/restarted or lack touch controls, missing polish (no reveal on long pages, clickable cards without class "card", forms without success feedback).
 Reply with ONLY a JSON object, no prose:
 {"verdict": "pass|fix", "summary": "one sentence", "issues": [{"severity": "critical|major|minor", "area": "where", "problem": "what is wrong", "fix": "exact instruction for the developer"}]}
 Use "fix" only if there is at least one critical or major issue. At most 10 issues, most important first.`;
@@ -140,6 +153,9 @@ export function buildMessages(role: Role, ctx: StepContext): Msg[] {
         { role: 'system', content: ROUTER },
         { role: 'user', content: `Open project: ${ctx.projectName || 'none'} (${KIND_LABELS[ctx.kind]}).${hist}\n\nLatest message:\n${req}` },
       ];
+    case 'audit':
+    case 'playtester':
+      return [{ role: 'user', content: req }];
     case 'architect':
       return [
         { role: 'system', content: ARCHITECT },
@@ -156,7 +172,7 @@ export function buildMessages(role: Role, ctx: StepContext): Msg[] {
           { role: 'system', content: DEVELOPER },
           {
             role: 'user',
-            content: `Here is the current ${kind} "${ctx.projectName || ''}":\n\n${trimHtml(ctx.html)}${spec}${design}${hist}\n\nApply this change and return the FULL updated HTML document. Keep everything that was not asked to change exactly as it is (content, features, design), and keep the design system consistent:\n${req}`,
+            content: `Here is the current ${kind} "${ctx.projectName || ''}":\n\n${trimHtml(ctx.html)}${spec}${design}${memoryBlock(ctx)}${hist}\n\nApply this change and return the FULL updated HTML document. Keep everything that was not asked to change exactly as it is (content, features, design), and keep the design system consistent:\n${req}`,
           },
         ];
       }
@@ -165,7 +181,7 @@ export function buildMessages(role: Role, ctx: StepContext): Msg[] {
           { role: 'system', content: DEVELOPER },
           {
             role: 'user',
-            content: `Here is the current ${kind}:\n\n${trimHtml(ctx.html)}${spec}\n\nThe ${ctx.round && ctx.round > 1 ? 'next review round' : 'review'} found these problems:\n${reportText(ctx.report)}\n\nFix every critical and major problem (and minor ones when cheap) and return the FULL corrected HTML document. Do not remove working features. Original request, for reference:\n${req}`,
+            content: `Here is the current ${kind}:\n\n${trimHtml(ctx.html)}${spec}${memoryBlock(ctx)}\n\nThe ${ctx.round && ctx.round > 1 ? 'next review round' : 'review'} found these problems:\n${reportText(ctx.report)}\n\nFix every critical and major problem (and minor ones when cheap) and return the FULL corrected HTML document. Do not remove working features. Original request, for reference:\n${req}`,
           },
         ];
       }
@@ -182,7 +198,7 @@ export function buildMessages(role: Role, ctx: StepContext): Msg[] {
         { role: 'system', content: TESTER },
         {
           role: 'user',
-          content: `Project type: ${kind}.${spec}\n\nRequest:\n${req}\n\n${checksText(ctx.checks)}\n\nHTML:\n${trimHtml(ctx.html, 140_000)}`,
+          content: `Project type: ${kind}.${spec}${memoryBlock(ctx)}\n\nRequest:\n${req}\n\n${checksText(ctx.checks)}\n\nHTML:\n${trimHtml(ctx.html, 140_000)}`,
         },
       ];
     case 'reviewer':
@@ -196,7 +212,7 @@ export function buildMessages(role: Role, ctx: StepContext): Msg[] {
         {
           role: 'user',
           content:
-            (ctx.html ? `Open project "${ctx.projectName || ''}" (${KIND_LABELS[ctx.kind]}).${spec}\n\nCode excerpt:\n${trimHtml(ctx.html, 40_000)}` : 'No project is open yet.') +
+            (ctx.html ? `Open project "${ctx.projectName || ''}" (${KIND_LABELS[ctx.kind]}).${spec}${memoryBlock(ctx)}\n\nCode excerpt:\n${trimHtml(ctx.html, 40_000)}` : 'No project is open yet.') +
             `${hist}\n\nQuestion:\n${req}`,
         },
       ];

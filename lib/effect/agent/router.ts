@@ -102,6 +102,8 @@ const STEP_TITLES = {
   reviewer: 'Ревьюер',
   answer: 'Ответ',
   router: 'Роутер',
+  audit: 'Диагностика',
+  playtester: 'Плейтестер',
 } as const;
 
 export const stepTitle = (role: keyof typeof STEP_TITLES) => STEP_TITLES[role];

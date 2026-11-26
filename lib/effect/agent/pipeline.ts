@@ -9,6 +9,8 @@ import { CONTINUE, buildMessages } from './prompts.ts';
 import { extractHtml, failedChecks, isComplete, parseJson, staticChecks, stitch, titleOf, type SyntaxCheck } from './html.ts';
 import { KIND_LABELS, isKind } from './models.ts';
 import { classify, route as makeRoute, stepTitle } from './router.ts';
+import { auditChecks, auditOutput, auditSummary, type AuditReport } from '../audit.ts';
+import { withMotionKit } from '../motion-kit.ts';
 import {
   AgentError,
   type AgentEvent,
@@ -45,6 +47,8 @@ export type PipelineInput = {
   routerModel?: boolean;
   /** Minimum gap between partial preview events, ms. */
   previewEvery?: number;
+  /** Runs the page in a real browser (sandboxed preview) and reports runtime facts. */
+  diagnose?: (html: string, kind: Kind) => Promise<AuditReport[]>;
 };
 
 /** Codes after which nothing else should be attempted in this run. */
@@ -175,7 +179,9 @@ export async function runPipeline(input: PipelineInput): Promise<DoneEvent | nul
       projectName: project?.name,
       history: project?.history,
       ultra: route.effort === 'ultra',
+      memory: route.intent === 'new' ? undefined : project?.memory,
     };
+    const polish = (h: string) => withMotionKit(h, { intro: route.kind !== 'game' });
 
     // One model call with streaming events. `html` steps auto-continue when cut off.
     const runStep = async (plan: StepPlan, ctx: StepContext, mode: 'json' | 'html' | 'text', id = plan.id) => {
@@ -288,6 +294,7 @@ export async function runPipeline(input: PipelineInput): Promise<DoneEvent | nul
     const devCtx: StepContext = { ...base, kind: route.kind, spec, design, html: route.intent === 'edit' ? project!.html : undefined };
     const built = await runStep(dev, devCtx, 'html');
     let html = extractHtml(built.text);
+    if (html) html = polish(html);
     if (!html) {
       const err = new AgentError('no_html', 'Модель не вернула HTML. Попробуйте ещё раз или выберите другую модель.');
       emit({ type: 'step', id: dev.id, status: 'error', message: err.message });
@@ -302,9 +309,26 @@ export async function runPipeline(input: PipelineInput): Promise<DoneEvent | nul
     });
     emit({ type: 'html', html, final: false });
 
-    // 5. Tester → fix rounds.
+    // 5. Runtime diagnostics → tester → fix rounds.
     let report: Report | null = null;
-    let checks = staticChecks(html, route.kind, input.syntax ?? null);
+    let runtime: Check[] = [];
+    let audits = 0;
+    const diagnose = async () => {
+      if (!input.diagnose || signal?.aborted) return [];
+      const id = audits++ ? 'audit-' + audits : 'audit';
+      const started = now();
+      emit({ type: 'step', id, role: 'audit', status: 'start', title: 'Диагностика', model: 'browser', at: started });
+      try {
+        const reports = await input.diagnose(html!, route.kind);
+        emit({ type: 'step', id, status: 'done', ms: now() - started, summary: auditSummary(reports), output: auditOutput(reports) });
+        return auditChecks(reports);
+      } catch {
+        emit({ type: 'step', id, status: 'skipped', reason: 'Не удалось запустить проверку в браузере' });
+        return [];
+      }
+    };
+    runtime = await diagnose();
+    let checks = [...staticChecks(html, route.kind, input.syntax ?? null), ...runtime];
     const tester = planOf('tester');
     let round = 0;
     const test = async (id: string) => {
@@ -325,8 +349,9 @@ export async function runPipeline(input: PipelineInput): Promise<DoneEvent | nul
       const r = await runStep(plan, { ...base, kind: route.kind, spec, design, html: html!, report: rep, round, intent: route.intent }, 'html', id);
       const next = extractHtml(r.text);
       if (next && (isComplete(next) || !isComplete(html!))) {
-        html = next;
-        checks = staticChecks(html, route.kind, input.syntax ?? null);
+        html = polish(next);
+        runtime = await diagnose();
+        checks = [...staticChecks(html, route.kind, input.syntax ?? null), ...runtime];
         emit({ type: 'step', id, status: 'done', ms: r.ms, summary: 'Исправлено · ' + Math.max(1, Math.round(html.length / 1024)) + ' КБ' });
         emit({ type: 'html', html, final: false });
       } else {
@@ -347,7 +372,9 @@ export async function runPipeline(input: PipelineInput): Promise<DoneEvent | nul
     } else {
       emit({ type: 'step', id: 'tester', status: 'skipped', reason: 'Небольшая правка — хватило автоматических проверок' });
       const bad = withChecks(null, checks);
-      if (bad && route.fixRounds > 0) await fix(bad, 'fix-1', 'Разработчик · исправления');
+      // A JavaScript error found in the browser is always worth one fix, even on quick edits.
+      const critical = bad?.issues.some((i) => i.severity === 'critical');
+      if (bad && (route.fixRounds > 0 || critical)) await fix(bad, 'fix-1', 'Разработчик · исправления');
     }
 
     // 6. Ultra review.
