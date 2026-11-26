@@ -3,6 +3,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { cleanEditedHtml, MAX_EDIT_HTML, withBridge } from '@/lib/effect/bridge';
 import { highlightHtml } from '@/lib/effect/highlight';
 import { clock, duration, thumbnailHtml, type Project, type RunView } from '@/lib/effect/project';
+import type { IconName } from '@/lib/effect/icons';
 import { Icon } from '../ui';
 
 export type View = 'preview' | 'code' | 'versions';
@@ -30,11 +31,12 @@ function LiveFrame({ html, title, onFrame }: { html: string; title: string; onFr
   }
   const a = useRef<HTMLIFrameElement>(null);
   const b = useRef<HTMLIFrameElement>(null);
+  const [loaded, setLoaded] = useState(false);
   useEffect(() => {
     onFrame?.((st.front === 0 ? a : b).current?.contentWindow ?? null);
   });
   return (
-    <div className="fxs-frames">
+    <div className={'fxs-frames' + (loaded ? '' : ' loading')}>
       {[0, 1].map((i) =>
         st.docs[i] ? (
           <iframe
@@ -48,6 +50,7 @@ function LiveFrame({ html, title, onFrame }: { html: string; title: string; onFr
             aria-hidden={i === st.front ? undefined : true}
             inert={i !== st.front}
             onLoad={() => {
+              setLoaded(true);
               setSt((cur) => {
                 if (i === cur.front || cur.docs[i] !== html) return cur;
                 const docs: [string, string] = [cur.docs[0], cur.docs[1]];
@@ -58,6 +61,36 @@ function LiveFrame({ html, title, onFrame }: { html: string; title: string; onFr
           />
         ) : null,
       )}
+      {!loaded && <PageSkeleton />}
+    </div>
+  );
+}
+
+/** A page-shaped skeleton with a light sweep, shown until the preview has loaded. */
+function PageSkeleton() {
+  return (
+    <div className="fxs-page-skel" aria-hidden="true">
+      <i className="nav" />
+      <i className="h1" />
+      <i className="h2" />
+      <i className="btn" />
+      <span>
+        <i />
+        <i />
+        <i />
+      </span>
+    </div>
+  );
+}
+
+function EmptyState({ icon, title, text }: { icon: IconName; title: string; text: string }) {
+  return (
+    <div className="fxs-empty">
+      <span className="fxs-empty-ic">
+        <Icon name={icon} />
+      </span>
+      <b>{title}</b>
+      <p>{text}</p>
     </div>
   );
 }
@@ -162,7 +195,7 @@ function CodeView({ html, onApply, busy }: { html: string; onApply: (html: strin
 
 function Versions({ project, onRestore, onCompare, compare }: { project: Project; onRestore: (id: string) => void; onCompare: (id: string | null) => void; compare: string | null }) {
   const list = [...project.versions].reverse();
-  if (!list.length) return <p className="fxs-empty-note">Версий пока нет — они появятся после первой генерации.</p>;
+  if (!list.length) return <EmptyState icon="history" title="Версий пока нет" text="Каждая генерация и правка сохраняется отдельной версией." />;
   return (
     <ol className="fxs-versions">
       {list.map((v, i) => {
@@ -336,10 +369,7 @@ export default function Stage(props: {
             ) : props.running ? (
               <Building run={props.run} />
             ) : (
-              <div className="fxs-empty-stage">
-                <Icon name="eye" size={24} />
-                <p>Здесь появится превью проекта.</p>
-              </div>
+              <EmptyState icon="eye" title="Превью появится здесь" text="Опишите проект в диалоге — превью обновится прямо во время работы агентов." />
             )}
             {has && props.running && (
               <output className="fxs-stream-badge">
@@ -348,7 +378,7 @@ export default function Stage(props: {
             )}
           </div>
         )}
-        {view === 'code' && (has ? <CodeView key={project.id + ':' + html.length} html={html} busy={props.running} onApply={(h) => props.onEdit(h, 'code')} /> : <p className="fxs-empty-note">Кода пока нет.</p>)}
+        {view === 'code' && (has ? <CodeView key={project.id + ':' + html.length} html={html} busy={props.running} onApply={(h) => props.onEdit(h, 'code')} /> : <EmptyState icon="code" title="Кода пока нет" text="Код появится, как только разработчик начнёт писать проект." />)}
         {view === 'versions' && (
           <div className={'fxs-vwrap' + (cmp ? ' comparing' : '')}>
             <Versions project={project} onRestore={props.onRestore} onCompare={setCompare} compare={compare} />

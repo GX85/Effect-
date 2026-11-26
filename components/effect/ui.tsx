@@ -1,29 +1,38 @@
 import type { Kind } from '@/lib/effect/agent/types';
 import { ICONS, ICON_STROKE, type IconName } from '@/lib/effect/icons';
+import { useId } from 'react';
 import { LOGO } from '@/lib/effect/logo';
 
 export { KIND_LABELS as kindLabels } from '@/lib/effect/agent/models';
 
-/** The Effect mark. `tile` false draws the prism and spectrum without the squircle tile. */
-export function EffectLogo({ size = 28, tile = true, title }: { size?: number; tile?: boolean; title?: string }) {
+/** The Effect mark: a triangle with a glowing rainbow outline. `live` adds a slow glow breath. */
+export function EffectLogo({ size = 28, title, live = false }: { size?: number; title?: string; live?: boolean }) {
+  const u = useId().replace(/[^a-zA-Z0-9]/g, '');
+  const g = 'fxRainbow' + u;
+  const f = 'fxGlow' + u;
   return (
     <svg
-      className={tile ? 'fx-logo' : 'fx-logo bare'}
+      className={live ? 'fx-logo live' : 'fx-logo'}
       width={size}
       height={size}
-      viewBox="0 0 32 32"
+      viewBox={LOGO.viewBox}
+      fill="none"
       role={title ? 'img' : undefined}
       aria-label={title}
       aria-hidden={title ? undefined : true}
     >
-      {tile && <path className="fx-logo-tile" d={LOGO.tile} />}
-      {tile && <path className="fx-logo-ring" d={LOGO.tile} transform="translate(.4 .4) scale(.975)" />}
-      {LOGO.bands.map(([d, c]) => (
-        <path key={d} d={d} fill={c} />
-      ))}
-      <path className="fx-logo-glass" d={LOGO.beam} />
-      <path className="fx-logo-glass" d={LOGO.left} fillOpacity={0.94} />
-      <path className="fx-logo-glass" d={LOGO.right} fillOpacity={0.52} />
+      <defs>
+        <linearGradient id={g} {...LOGO.gradient} gradientUnits="userSpaceOnUse">
+          {LOGO.stops.map(([o, c]) => (
+            <stop key={o} offset={o} stopColor={c} />
+          ))}
+        </linearGradient>
+        <filter id={f} x="-30%" y="-30%" width="160%" height="160%">
+          <feGaussianBlur stdDeviation={LOGO.glow.blur} />
+        </filter>
+      </defs>
+      <path className="fx-logo-glow" d={LOGO.path} stroke={`url(#${g})`} strokeWidth={LOGO.glow.width} strokeLinejoin="round" filter={`url(#${f})`} opacity={LOGO.glow.opacity} />
+      <path d={LOGO.path} stroke={`url(#${g})`} strokeWidth={LOGO.stroke} strokeLinejoin="round" />
     </svg>
   );
 }

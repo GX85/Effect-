@@ -29,7 +29,7 @@ import {
   type Project,
 } from '@/lib/effect/project';
 import type { CatalogModel, Engine, EngineStatus } from './engine';
-import { Composer, Conversation, EmptyStart, Sidebar } from './parts';
+import { About, Composer, Conversation, EmptyStart, Sidebar } from './parts';
 import Stage, { type Device, type View } from './Stage';
 import { EffectLogo, Icon } from '../ui';
 
@@ -66,9 +66,11 @@ export type StudioProps = {
   initialPrompt?: string;
   /** Site link for features that only work there (artifact). */
   siteUrl?: string;
+  /** Where "Проекты Prism" points. */
+  prismUrl?: string;
 };
 
-export default function Studio({ engine, onExit, initialPrompt, siteUrl }: StudioProps) {
+export default function Studio({ engine, onExit, initialPrompt, siteUrl, prismUrl = '/#prism' }: StudioProps) {
   const [projects, setProjects] = useState<Project[]>([]);
   const [currentId, setCurrentId] = useState<string | null>(null);
   const [status, setStatus] = useState<EngineStatus>({ state: 'checking' });
@@ -84,7 +86,9 @@ export default function Studio({ engine, onExit, initialPrompt, siteUrl }: Studi
   const [draft, setDraft] = useState('');
   const [toasts, setToasts] = useState<Toast[]>([]);
   const [ready, setReady] = useState(false);
-  const [queued, setQueued] = useState<string | null>(initialPrompt ?? null);
+  const [queued, setQueued] = useState<string | null>(null);
+  const consumedPrompt = useRef<string | undefined>(undefined);
+  const lastSend = useRef<{ text: string; at: number } | null>(null);
   const runRef = useRef<Running | null>(null);
   const projectsRef = useRef<Project[]>([]);
   useEffect(() => {
@@ -189,6 +193,10 @@ export default function Studio({ engine, onExit, initialPrompt, siteUrl }: Studi
     async (raw: string) => {
       const text = raw.trim().slice(0, 6000);
       if (!text || runRef.current) return;
+      // The same message twice within a few seconds is a double submit, not a new request.
+      const prevSend = lastSend.current;
+      if (prevSend && prevSend.text === text && Date.now() - prevSend.at < 4000) return;
+      lastSend.current = { text, at: Date.now() };
       if (status.state === 'checking') {
         setQueued(text);
         setDraft('');
@@ -316,8 +324,10 @@ export default function Studio({ engine, onExit, initialPrompt, siteUrl }: Studi
     patchMessage(r.projectId, r.messageId, (m) => (m.run && m.run.status === 'running' ? { ...m, run: stopRun(m.run) } : m));
   }, [patchMessage]);
 
+  // The landing / ?q= prompt is queued exactly once per distinct prompt.
   useEffect(() => {
-    if (!initialPrompt) return;
+    if (!initialPrompt || consumedPrompt.current === initialPrompt) return;
+    consumedPrompt.current = initialPrompt;
     const t = window.setTimeout(() => setQueued(initialPrompt), 0);
     return () => window.clearTimeout(t);
   }, [initialPrompt]);
@@ -492,8 +502,9 @@ export default function Studio({ engine, onExit, initialPrompt, siteUrl }: Studi
         <button type="button" className="fxs-icon-btn" aria-label={sidebar ? 'Скрыть проекты' : 'Показать проекты'} aria-expanded={sidebar} onClick={() => transition(() => setSidebar((v) => !v))}>
           <Icon name="sidebar" />
         </button>
-        <button type="button" className="fxs-brand" onClick={onExit} aria-label={onExit ? 'Effect — на главную' : 'Effect'} disabled={!onExit}>
-          <EffectLogo size={26} /> <span>Effect</span>
+        <button type="button" className="fxs-brand" onClick={onExit} aria-label={onExit ? 'Effect by Prism — на главную' : 'Effect by Prism'} disabled={!onExit}>
+          <EffectLogo size={26} live />
+          <span>Effect</span>
         </button>
         {current && (
           <input
@@ -510,6 +521,7 @@ export default function Studio({ engine, onExit, initialPrompt, siteUrl }: Studi
             <i /> {activeRun?.steps.find((s) => s.status === 'running')?.title ?? 'Effect работает'}
           </output>
         )}
+        <About prismUrl={prismUrl} />
         <button type="button" className="fxs-btn ghost" onClick={createNew}>
           <Icon name="plus" size={16} /> <span className="fxs-hide-sm">Новый проект</span>
         </button>
@@ -528,7 +540,7 @@ export default function Studio({ engine, onExit, initialPrompt, siteUrl }: Studi
       />
 
       {!current ? (
-        <EmptyStart status={status} surface={engine.surface} onIdea={(t) => { setDraft(t); composerRef.current?.focus(); }} onManage={manage} siteUrl={siteUrl}>
+        <EmptyStart status={status} surface={engine.surface} onManage={manage} siteUrl={siteUrl}>
           {composer}
         </EmptyStart>
       ) : (

@@ -82,7 +82,7 @@ export function initLanding(open: Open) {
   const stage = $('.fx-prism');
   if (stage && 'IntersectionObserver' in window && 'ResizeObserver' in window) bindParallax(stage, reduce);
 
-  // Hero composer: Enter / send opens the studio and starts the agents; ideas only fill the field
+  // Hero composer: Enter / send opens the studio and starts the agents
   const form = $<HTMLFormElement>('.fxh-composer');
   const ta = form ? $<HTMLTextAreaElement>('textarea', form) : null;
   if (form && ta) {
@@ -101,12 +101,6 @@ export function initLanding(open: Open) {
         go();
       }
     });
-    $$<HTMLButtonElement>('[data-idea]', form).forEach((b) =>
-      b.addEventListener('click', () => {
-        ta.value = b.dataset.idea || '';
-        ta.focus();
-      }),
-    );
   }
 
   // Every "#studio" link opens the studio

@@ -2280,3 +2280,86 @@ html.fxh-root {
     transform: none;
   }
 }
+
+/* Effect by Prism */
+.fxh-by {
+  margin-left: -4px;
+  color: var(--haze);
+  font-size: var(--fs-13);
+  font-weight: 500;
+  letter-spacing: 0;
+}
+.fxh-team {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--sp-6);
+  padding: 36px;
+  border-radius: var(--r-lg);
+  border: 1px solid var(--line);
+  background: radial-gradient(60% 120% at 0% 0%, rgba(191, 90, 242, 0.12), transparent 70%), #0d0d0f;
+}
+.fxh-team .fx-logo {
+  flex: none;
+}
+.fxh-team h2 {
+  margin: 6px 0 12px;
+  font-size: clamp(var(--fs-28), 4vw, var(--fs-40));
+}
+.fxh-team .fxh-muted {
+  max-width: 620px;
+  font-size: var(--fs-17);
+}
+@supports (corner-shape: squircle) {
+  .fxh-team {
+    corner-shape: squircle;
+  }
+}
+@media (max-width: 760px) {
+  .fxh-team {
+    flex-direction: column;
+    gap: var(--sp-4);
+    padding: 22px;
+    border-radius: var(--r-md);
+  }
+}
+
+/* Box model for every landing element: no control grows past its container. */
+.fxh *,
+.fxh *::before,
+.fxh *::after {
+  box-sizing: border-box;
+}
+/* A solid band above the floating nav, so scrolled content never peeks through the gap. */
+.fxh::before {
+  content: '';
+  position: fixed;
+  z-index: 59;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: calc(env(safe-area-inset-top, 0px) + 24px);
+  background: linear-gradient(#000 55%, rgba(0, 0, 0, 0));
+  pointer-events: none;
+}
+.fxh-composer {
+  display: flex;
+  flex-direction: column;
+}
+.fxh-composer-note {
+  order: 2;
+  margin: 10px 6px 2px !important;
+  color: var(--haze);
+  font-size: var(--fs-13);
+  text-align: left;
+}
+.fxh-nav .fxh-btn.sm {
+  white-space: nowrap;
+}
+@media (max-width: 440px) {
+  .fxh-nav .fxh-by {
+    display: none;
+  }
+  .fxh-nav .fxh-btn.sm {
+    padding: 0 14px;
+  }
+}

@@ -156,8 +156,13 @@ test('code highlighting escapes markup and marks tags, strings and keywords', ()
   assert.ok(!/<div|<script|<b>/.test(out.replace(/<span class="hl-\w+">|<\/span>/g, '')));
 });
 
-test('the logo is a self-contained SVG with the Effect title', () => {
-  const svg = logoSvg(64, { title: 'Effect' });
-  assert.match(svg, /^<svg[^>]+width="64"[^>]+aria-label="Effect"/);
-  assert.ok(!/id=|url\(#/.test(svg), 'no ids, so copies never clash');
+test('the logo is only a rainbow-outline triangle, with unique ids per copy', () => {
+  const a = logoSvg(64, { title: 'Effect' });
+  const b = logoSvg(32);
+  assert.match(a, /^<svg[^>]+viewBox="0 0 64 64"[^>]+width="64"[^>]+aria-label="Effect"/);
+  assert.equal((a.match(/<path /g) || []).length, 2, 'glow copy and outline, nothing else');
+  assert.match(a, /d="M32 9.5 55.5 51.5H8.5Z"/);
+  assert.ok(!/fill="#/.test(a), 'no fill and no tile');
+  const ids = (s: string) => [...s.matchAll(/id="([^"]+)"/g)].map((m) => m[1]);
+  assert.equal(ids(a).filter((x) => ids(b).includes(x)).length, 0);
 });

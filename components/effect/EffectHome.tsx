@@ -14,14 +14,6 @@ const agents: ['architect' | 'designer' | 'developer' | 'tester', string, string
   ['tester', 'Тестировщик', 'Ищет ошибки, поломки вёрстки на телефоне и компьютере, проблемы доступности и недоделки. Разработчик их исправляет.'],
 ];
 
-/** Idea prompts: clicking one only fills the composer. Every project is written by the agents. */
-const ideas = [
-  'Сайт семейной пекарни «Колос» с меню, доставкой и формой заказа',
-  'Аркада про кота-курьера на крышах ночного города',
-  'Дашборд продаж за квартал с фильтрами и графиками',
-  'Презентация для инвесторов: аренда электросамокатов',
-];
-
 // Syntax-highlighted lines for the "one HTML file" bento cell: [class, text] tokens.
 const codeLines: [string, string][][] = [
   [['t', '<!doctype '], ['a', 'html'], ['t', '>']],
@@ -222,8 +214,8 @@ function Nav() {
   }, [open]);
   return (
     <header className="fxh-nav" ref={bar}>
-      <Link className="fxh-brand" href="/effect" aria-label="Effect — главная">
-        <EffectLogo /> Effect
+      <Link className="fxh-brand" href="/effect" aria-label="Effect by Prism — главная">
+        <EffectLogo live /> Effect <span className="fxh-by">by Prism</span>
       </Link>
       <nav aria-label="Разделы">
         {sections.map(([href, label]) => (
@@ -277,6 +269,7 @@ function Composer() {
         go();
       }}
     >
+      <p className="fxh-composer-note">Effect сам поймёт тип проекта и подберёт модель. Enter — отправить.</p>
       <div className="fxh-input">
         <label htmlFor="fxh-prompt" className="fx-sr">
           Опишите проект
@@ -297,13 +290,6 @@ function Composer() {
         <button className="fxh-send" type="submit" aria-label="Создать">
           <Icon name="send" />
         </button>
-      </div>
-      <div className="fxh-chips">
-        {ideas.map((ex) => (
-          <button key={ex} type="button" data-idea={ex} onClick={() => setText(ex)}>
-            {ex}
-          </button>
-        ))}
       </div>
     </form>
   );
@@ -610,6 +596,20 @@ export default function EffectHome() {
           </Link>
         </section>
 
+        <section className="fxh-section fxh-prism-team" id="prism">
+          <div className="fxh-team fxh-reveal">
+            <EffectLogo size={56} live />
+            <div>
+              <p className="fxh-eyebrow">Effect by Prism</p>
+              <h2>Создано командой Prism</h2>
+              <p className="fxh-muted">Effect — продукт студии Prism: мы проектируем и делаем сайты, приложения и интерфейсы. Effect собирает этот опыт в команду агентов, которая работает по вашим словам.</p>
+              <Link className="fxh-link" href="/#prism">
+                Проекты Prism →
+              </Link>
+            </div>
+          </div>
+        </section>
+
         <section className="fxh-section" id="faq">
           <h2 className="fxh-display small fxh-reveal">Вопросы</h2>
           <div className="fxh-faq">
@@ -626,7 +626,7 @@ export default function EffectHome() {
       <footer className="fxh-footer">
         <div className="fxh-foot-brand">
           <Link className="fxh-brand" href="/effect">
-            <EffectLogo /> Effect
+            <EffectLogo /> Effect <span className="fxh-by">by Prism</span>
           </Link>
           <p>Опиши идею. Получи эффект.</p>
           <small>ИИ-студия команды Prism: сайты, приложения, игры и презентации из ваших слов.</small>
@@ -645,12 +645,13 @@ export default function EffectHome() {
           </div>
           <div>
             <h4>Prism</h4>
+            <Link href="/#prism">Проекты Prism</Link>
             <Link href="/">Сайт студии Prism</Link>
             <Link href="/start">Начать проект</Link>
           </div>
         </nav>
         <div className="fxh-foot-bottom">
-          <span>© 2026 Prism. Все права защищены.</span>
+          <span>Effect by Prism · © 2026 Prism. Все права защищены.</span>
           <Link href="/start">Обсудить внедрение →</Link>
         </div>
       </footer>

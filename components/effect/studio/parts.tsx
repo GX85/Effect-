@@ -1,5 +1,5 @@
 'use client';
-import { forwardRef, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { forwardRef, useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import { EFFORTS, KIND_LABELS, MODELS, effortName, modelName } from '@/lib/effect/agent/models';
 import type { EffortId } from '@/lib/effect/agent/types';
 import { clock, duration, searchProjects, timeAgo, type ChatMessage, type Project, type RunView, type StepView } from '@/lib/effect/project';
@@ -8,6 +8,12 @@ import type { CatalogModel, EngineStatus } from './engine';
 import { EffectLogo, Icon, KindIcon } from '../ui';
 
 // ───────────── Sidebar ─────────────
+
+/** The project's own accent (from the designer), used to tint its thumbnail. */
+function accentStyle(p: Project): CSSProperties | undefined {
+  const a = p.design?.palette?.accent;
+  return typeof a === 'string' && /^#[0-9a-f]{3,8}$/i.test(a) ? ({ '--ac': a } as CSSProperties) : undefined;
+}
 
 export function Sidebar(props: {
   projects: Project[];
@@ -27,7 +33,9 @@ export function Sidebar(props: {
   return (
     <aside className="fxs-side" aria-label="Проекты">
       <div className="fxs-side-head">
-        <h2>Проекты</h2>
+        <h2>
+          Проекты {props.projects.length > 0 && <span className="fxs-count">{props.projects.length}</span>}
+        </h2>
         <button type="button" className="fxs-icon-btn" aria-label="Новый проект" onClick={props.onNew}>
           <Icon name="plus" />
         </button>
@@ -42,7 +50,13 @@ export function Sidebar(props: {
         <kbd>⌘K</kbd>
       </label>
       {list.length === 0 ? (
-        <p className="fxs-side-empty">{q ? 'Ничего не нашлось.' : 'Здесь появятся ваши проекты. Они хранятся только в этом браузере.'}</p>
+        <div className="fxs-side-empty">
+          <span className="fxs-empty-ic">
+            <Icon name={q ? 'search' : 'projects'} />
+          </span>
+          <p>{q ? 'Ничего не нашлось.' : 'Здесь появятся ваши проекты.'}</p>
+          {!q && <small>Они хранятся только в этом браузере.</small>}
+        </div>
       ) : (
         <ul className="fxs-plist">
           {list.map((p) => (
@@ -55,7 +69,7 @@ export function Sidebar(props: {
                     setEditing(null);
                   }}
                 >
-                  <span className="fxs-pic">
+                  <span className={'fxs-pic k-' + p.kind} style={accentStyle(p)}>
                     <KindIcon kind={p.kind} />
                   </span>
                   <input
@@ -84,7 +98,9 @@ export function Sidebar(props: {
               ) : (
                 <div className="fxs-prow">
                   <button type="button" className="fxs-pmain" onClick={() => props.onSelect(p.id)} aria-current={p.id === props.currentId ? 'page' : undefined}>
-                    <span className="fxs-pic">{props.runningId === p.id ? <i className="fxs-spin" aria-label="работает" /> : <KindIcon kind={p.kind} />}</span>
+                    <span className={'fxs-pic k-' + p.kind} style={accentStyle(p)}>
+                      {props.runningId === p.id ? <i className="fxs-spin" aria-label="работает" /> : <KindIcon kind={p.kind} />}
+                    </span>
                     <span className="fxs-ptext">
                       <b>{p.name}</b>
                       <small>
@@ -177,6 +193,11 @@ function StepRow({ step, catalog, now }: { step: StepView; catalog: CatalogModel
           )}
         </div>
         <p>{detail}</p>
+        {running && step.role === 'developer' && (
+          <span className="fxs-step-bar" aria-hidden="true">
+            <i style={{ transform: `scaleX(${Math.min(0.95, (step.chars ?? 0) / 60000 + 0.04)})` }} />
+          </span>
+        )}
         {open && hasOut && <pre className="fxs-step-out">{step.output}</pre>}
       </div>
     </li>
@@ -187,11 +208,19 @@ export function Timeline({ run, catalog }: { run: RunView; catalog: CatalogModel
   const now = useNow(run.status === 'running');
   const total = Math.max(0, (run.finishedAt ?? (now || run.startedAt)) - run.startedAt);
   const visible = run.steps.filter((s) => !(s.status === 'skipped' && s.role === 'answer'));
+  const settled = visible.filter((s) => s.status === 'done' || s.status === 'skipped' || s.status === 'error').length;
+  const share = run.status === 'running' ? Math.min(0.96, (settled + 0.35) / Math.max(1, visible.length)) : 1;
   return (
     <div className="fxs-run" data-status={run.status}>
       <div className="fxs-run-head">
         <span>{run.route?.reason ?? 'Effect разбирает задачу…'}</span>
-        <span className="fxs-run-time">{duration(total)}</span>
+        <span className="fxs-run-time">
+          {visible.length > 0 && run.status === 'running' ? settled + ' из ' + visible.length + ' · ' : ''}
+          {duration(total)}
+        </span>
+      </div>
+      <div className="fxs-run-bar" aria-hidden="true">
+        <i style={{ transform: `scaleX(${share})` }} />
       </div>
       {visible.length > 0 && (
         <ol className="fxs-steps">
@@ -345,8 +374,10 @@ export function ModelPicker(props: {
       <button type="button" className="fxs-pill" aria-haspopup="dialog" aria-expanded={open} onClick={() => setOpen((v) => !v)}>
         <Icon name="cpu" size={16} /> <span className="fxs-pill-k">Модель</span> {props.label} <Icon name="chevron" size={16} />
       </button>
+      {open && <div className="fxs-sheet-backdrop" aria-hidden="true" onClick={() => setOpen(false)} />}
       {open && (
         <dialog open className="fxs-pop" aria-label="Модель">
+          <i className="fxs-grabber" aria-hidden="true" />
           <p className="fxs-pop-title">Модель</p>
           <button type="button" className="fxs-opt" aria-pressed={props.model === 'auto'} onClick={() => pick('auto')}>
             <span className="fxs-opt-ic">
@@ -360,7 +391,7 @@ export function ModelPicker(props: {
           {MODELS.map((m) => (
             <button key={m.id} type="button" className="fxs-opt" aria-pressed={props.model === m.id} disabled={!effect} onClick={() => pick(m.id)}>
               <span className={'fxs-opt-ic m-' + m.id}>
-                <EffectLogo size={18} tile={false} />
+                <EffectLogo size={18} />
               </span>
               <span>
                 <b>
@@ -423,8 +454,10 @@ export function EffortPicker({ effort, onEffort }: { effort: EffortId; onEffort:
       <button type="button" className="fxs-pill" aria-haspopup="dialog" aria-expanded={open} onClick={() => setOpen((v) => !v)}>
         <Icon name="bolt" size={16} /> <span className="fxs-pill-k">Глубина</span> {effortName(effort)} <Icon name="chevron" size={16} />
       </button>
+      {open && <div className="fxs-sheet-backdrop" aria-hidden="true" onClick={() => setOpen(false)} />}
       {open && (
         <dialog open className="fxs-pop narrow" aria-label="Глубина">
+          <i className="fxs-grabber" aria-hidden="true" />
           <p className="fxs-pop-title">Глубина работы</p>
           {EFFORTS.map((e) => (
             <button
@@ -439,7 +472,7 @@ export function EffortPicker({ effort, onEffort }: { effort: EffortId; onEffort:
               }}
             >
               <span>
-                <b>{e.name}</b>
+                <b>{e.id === 'ultra' ? <span className="fxs-ultra">{e.name}</span> : e.name}</b>
                 <small>{e.hint}</small>
               </span>
             </button>
@@ -511,13 +544,15 @@ export const Composer = forwardRef<HTMLTextAreaElement, ComposerProps>(function 
           }
         }}
       />
+      <span className="fxs-ring" aria-hidden="true" />
       <div className="fxs-composer-row">
         <ModelPicker model={p.model} label={p.choiceLabel} onModel={p.onModel} catalog={p.catalog} status={p.status} surface={p.surface} siteUrl={p.siteUrl} />
         <EffortPicker effort={p.effort} onEffort={p.onEffort} />
         <span className="fxs-composer-sp" />
-        <span className="fxs-kbd-hint">Enter — отправить</span>
+        <span className="fxs-kbd-hint">Enter — отправить · Shift+Enter — строка</span>
         {p.running ? (
           <button type="submit" className="fxs-send stop" aria-label="Остановить (Esc)">
+            <i className="fxs-send-ring" aria-hidden="true" />
             <Icon name="stop" />
           </button>
         ) : (
@@ -532,19 +567,9 @@ export const Composer = forwardRef<HTMLTextAreaElement, ComposerProps>(function 
 
 // ───────────── Empty start ─────────────
 
-const IDEAS = [
-  'Сайт семейной пекарни «Колос» с меню, доставкой и формой заказа',
-  'Аркада про кота-курьера на крышах ночного города с рекордами и тач-управлением',
-  'Дашборд продаж интернет-магазина за квартал с фильтрами и графиками',
-  'Презентация для инвесторов: сервис аренды электросамокатов, 12 слайдов',
-  'Лендинг онлайн-курса по фотографии с тарифами и отзывами',
-  'Калькулятор ипотеки с графиком платежей и сравнением банков',
-];
-
 export function EmptyStart(props: {
   status: EngineStatus;
   surface: 'site' | 'artifact';
-  onIdea: (text: string) => void;
   onManage?: () => Promise<void>;
   siteUrl?: string;
   children: ReactNode;
@@ -552,10 +577,17 @@ export function EmptyStart(props: {
   const s = props.status;
   return (
     <section className="fxs-start" aria-label="Новый проект">
+      <div className="fxs-ambient" aria-hidden="true">
+        <i className="a" />
+        <i className="b" />
+        <i className="c" />
+      </div>
       <div className="fxs-start-inner">
-        <EffectLogo size={64} />
+        <div className="fxs-hero-mark">
+          <EffectLogo size={84} live />
+        </div>
         <h1>Что создадим?</h1>
-        <p className="fxs-start-lead">Опишите идею своими словами. Архитектор, дизайнер, разработчик и тестировщик Effect соберут проект и проверят его.</p>
+        <p className="fxs-start-lead">Опишите идею своими словами — команда агентов Effect спроектирует, нарисует, напишет и проверит проект.</p>
         {s.state === 'no-key' ? (
           <KeySetup env={s.env} />
         ) : s.state === 'no-sample' ? (
@@ -575,18 +607,17 @@ export function EmptyStart(props: {
           <AccessNote onManage={props.onManage} />
         ) : null}
         {props.children}
-        <div className="fxs-ideas" aria-label="Идеи">
-          <p>Идеи для начала — нажмите, чтобы вставить в поле:</p>
-          <ul>
-            {IDEAS.map((t) => (
-              <li key={t}>
-                <button type="button" onClick={() => props.onIdea(t)}>
-                  {t}
-                </button>
-              </li>
-            ))}
-          </ul>
-        </div>
+        <ul className="fxs-start-facts" aria-label="Как работает Effect">
+          <li>
+            <Icon name="router" size={16} /> Сам поймёт: новый проект, правка или вопрос
+          </li>
+          <li>
+            <Icon name="tester" size={16} /> Тестировщик проверяет каждую сборку
+          </li>
+          <li>
+            <Icon name="history" size={16} /> Каждая генерация — новая версия
+          </li>
+        </ul>
       </div>
     </section>
   );
@@ -613,6 +644,46 @@ function KeySetup({ env }: { env: string[] }) {
         ))}
       </ul>
       <p className="fxs-keys-foot">Достаточно одного ключа. Без ключей студия открывает и хранит ваши проекты, но не генерирует новые.</p>
+    </div>
+  );
+}
+
+// ───────────── About ─────────────
+
+export function About({ prismUrl }: { prismUrl: string }) {
+  const { open, setOpen, ref } = usePopover();
+  const external = /^https?:/.test(prismUrl);
+  return (
+    <div className="fxs-picker fxs-about" ref={ref}>
+      <button type="button" className="fxs-icon-btn" aria-label="О Effect" aria-haspopup="dialog" aria-expanded={open} onClick={() => setOpen((v) => !v)}>
+        <Icon name="info" />
+      </button>
+      {open && (
+        <dialog open className="fxs-pop down" aria-label="О Effect">
+          <div className="fxs-about-head">
+            <EffectLogo size={40} live />
+            <div>
+              <b>Effect by Prism</b>
+              <small>ИИ-студия команды Prism</small>
+            </div>
+          </div>
+          <p className="fxs-pop-note">Effect собирает сайты, приложения, игры и презентации командой агентов: архитектор, дизайнер, разработчик и тестировщик. Проекты хранятся в вашем браузере.</p>
+          <p className="fxs-pop-note">
+            <a href={prismUrl} target={external ? '_blank' : undefined} rel={external ? 'noopener' : undefined}>
+              Проекты Prism →
+            </a>
+          </p>
+          <p className="fxs-pop-title">Горячие клавиши</p>
+          <ul className="fxs-keys-list">
+            <li><kbd>Enter</kbd> отправить</li>
+            <li><kbd>Esc</kbd> остановить агентов</li>
+            <li><kbd>⌘K</kbd> поиск по проектам</li>
+            <li><kbd>⌘S</kbd> скачать HTML</li>
+            <li><kbd>⌘Z</kbd> предыдущая версия</li>
+            <li><kbd>/</kbd> к полю ввода</li>
+          </ul>
+        </dialog>
+      )}
     </div>
   );
 }
