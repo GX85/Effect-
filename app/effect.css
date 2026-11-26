@@ -37,37 +37,42 @@ html.fxs-root body {
 }
 
 .fxs {
-  --bg: #050507;
-  --panel: #0a0a0e;
-  --raise: #121217;
-  --raise2: #1a1a21;
-  --raise3: #24242c;
-  --pop: #17171d;
+  /* Dark neutral surfaces; one accent: a muted champagne-gold hairline. */
+  --bg: #0b0b0c;
+  --panel: #0e0e10;
+  --raise: #141416;
+  --raise2: #1a1a1d;
+  --raise3: #232327;
+  --pop: #161618;
   --line: rgba(255, 255, 255, 0.07);
-  --line2: rgba(255, 255, 255, 0.13);
-  --snow: #f5f5f7;
-  --mist: #a6a6b0;
-  --haze: #6c6c77;
-  --blue: #0a84ff;
-  --blue2: #4ba3ff;
-  --ok: #30d158;
-  --warn: #ffd60a;
-  --err: #ff6961;
-  --spectrum: linear-gradient(100deg, #ff375f, #ff9f0a 17%, #ffd60a 33%, #30d158 50%, #64d2ff 66%, #0a84ff 82%, #bf5af2);
-  --r-xs: 9px;
-  --r-sm: 12px;
-  --r-md: 16px;
-  --r-lg: 22px;
-  --r-xl: 30px;
+  --line2: rgba(255, 255, 255, 0.12);
+  --snow: #ededee;
+  --mist: #a1a1a6;
+  --haze: #6e6e74;
+  --gold: #c9a96e;
+  --gold2: #d4b97f;
+  --gold-line: rgba(201, 169, 110, 0.55);
+  --gold-faint: rgba(201, 169, 110, 0.1);
+  --blue: var(--gold);
+  --blue2: var(--gold2);
+  --ok: #7fb58a;
+  --warn: #d4b97f;
+  --err: #e5736b;
+  --spectrum: var(--gold);
+  --r-xs: 8px;
+  --r-sm: 10px;
+  --r-md: 12px;
+  --r-lg: 14px;
+  --r-xl: 18px;
   --r-pill: 999px;
-  --sh-1: 0 1px 1px rgba(0, 0, 0, 0.4), 0 6px 16px rgba(0, 0, 0, 0.32);
-  --sh-2: 0 2px 6px rgba(0, 0, 0, 0.4), 0 22px 54px rgba(0, 0, 0, 0.55);
-  --sh-3: 0 30px 90px rgba(0, 0, 0, 0.72);
-  --hl: inset 0 1px 0 rgba(255, 255, 255, 0.06);
-  --spring: cubic-bezier(0.2, 0.9, 0.25, 1.15);
-  --out: cubic-bezier(0.2, 0.8, 0.2, 1);
-  --fast: 160ms;
-  --base: 320ms;
+  --sh-1: 0 1px 2px rgba(0, 0, 0, 0.35);
+  --sh-2: 0 8px 24px rgba(0, 0, 0, 0.4);
+  --sh-3: 0 16px 40px rgba(0, 0, 0, 0.5);
+  --hl: inset 0 1px 0 rgba(255, 255, 255, 0.03);
+  --spring: cubic-bezier(0.2, 0, 0, 1);
+  --out: cubic-bezier(0.2, 0, 0, 1);
+  --fast: 150ms;
+  --base: 220ms;
   --font: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Inter', 'Helvetica Neue', Arial, sans-serif;
   --display: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Inter', 'Helvetica Neue', Arial, sans-serif;
   --mono: ui-monospace, 'SF Mono', 'JetBrains Mono', Menlo, Consolas, monospace;
@@ -92,16 +97,6 @@ html.fxs-root body {
   -moz-osx-font-smoothing: grayscale;
   isolation: isolate;
 }
-/* Fine film grain: one static tile, composited once, never animated. */
-.fxs::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  z-index: 60;
-  pointer-events: none;
-  opacity: 0.035;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)'/%3E%3C/svg%3E");
-}
 .fxs[data-sidebar='open'] {
   grid-template-columns: var(--side-w) var(--chat-w) minmax(0, 1fr);
 }
@@ -114,11 +109,11 @@ html.fxs-root body {
 }
 @supports (corner-shape: squircle) {
   .fxs {
-    --r-xs: 13px;
-    --r-sm: 17px;
-    --r-md: 23px;
-    --r-lg: 32px;
-    --r-xl: 44px;
+    --r-xs: 11px;
+    --r-sm: 14px;
+    --r-md: 16px;
+    --r-lg: 19px;
+    --r-xl: 24px;
   }
   .fxs :is(.fxs-btn, .fxs-tool, .fxs-icon-btn, .fxs-seg, .fxs-seg button, .fxs-composer, .fxs-pop, .fxs-opt, .fxs-run, .fxs-step-ic, .fxs-pic, .fxs-search, .fxs-prow, .fxs-pmain, .fxs-note, .fxs-keys, .fxs-keys li, .fxs-msg.me p, .fxs-versions li, .fxs-compare iframe, .fxs-toast, .fxs-empty-ic, .fxs-step-out, .fxs-device, .fxs-skel, .fxs-tabs button, .fxs-start-facts li, .fxs-pacts) {
     corner-shape: squircle;
@@ -198,7 +193,7 @@ html.fxs-root body {
     background-color var(--fast) var(--out),
     color var(--fast) var(--out),
     box-shadow var(--fast) var(--out),
-    transform 420ms var(--spring);
+    transform 220ms var(--spring);
 }
 .fxs-btn {
   min-height: 38px;
@@ -258,12 +253,12 @@ html.fxs-root body {
   color: var(--snow);
 }
 .fxs-tool[aria-pressed='true'] {
-  background: rgba(10, 132, 255, 0.18);
+  background: var(--gold-faint);
   color: var(--blue2);
 }
 .fxs :is(.fxs-btn, .fxs-tool, .fxs-icon-btn, .fxs-pill, .fxs-opt, .fxs-pmain, .fxs-seg button, .fxs-tabs button, .fxs-step-more, .fxs-brand, .fxs-pacts button):active:not(:disabled) {
-  transform: scale(0.95);
-  transition-duration: 90ms;
+  transform: scale(0.97);
+  transition-duration: 80ms;
 }
 .fxs-chip {
   display: inline-flex;
@@ -290,7 +285,7 @@ html.fxs-root body {
   min-width: 0;
   height: 56px;
   padding: 0 12px;
-  border-bottom: 1px solid var(--line);
+  border-bottom: 1px solid rgba(201, 169, 110, 0.16);
   background: var(--panel);
 }
 .fxs-brand {
@@ -308,7 +303,7 @@ html.fxs-root body {
   letter-spacing: -0.025em;
   transition:
     background var(--fast),
-    transform 420ms var(--spring);
+    transform 220ms var(--spring);
 }
 .fxs-brand:hover:not(:disabled) {
   background: rgba(255, 255, 255, 0.06);
@@ -340,7 +335,7 @@ html.fxs-root body {
 }
 .fxs-name:focus {
   border-radius: var(--r-xs);
-  border-color: rgba(10, 132, 255, 0.7);
+  border-color: var(--gold-line);
   background: var(--raise);
   color: var(--snow);
 }
@@ -458,7 +453,7 @@ html.fxs-root body {
     background var(--fast);
 }
 .fxs-search:focus-within {
-  border-color: rgba(10, 132, 255, 0.6);
+  border-color: var(--gold-line);
   background: var(--raise2);
 }
 .fxs-search input {
@@ -491,7 +486,7 @@ html.fxs-root body {
 }
 .fxs-plist li {
   margin-bottom: 2px;
-  animation: fxs-in 420ms var(--spring) backwards;
+  animation: fxs-in 220ms var(--spring) backwards;
 }
 .fxs-prow {
   position: relative;
@@ -520,47 +515,25 @@ html.fxs-root body {
   text-align: left;
   transition:
     background var(--fast),
-    transform 420ms var(--spring);
+    transform 220ms var(--spring);
 }
 .fxs-plist li:not(.on) .fxs-pmain:hover {
   background: rgba(255, 255, 255, 0.04);
 }
-/* Project thumbnail: a tile tinted by the project's kind (or its own accent). */
 .fxs-pic {
-  --kc: #0a84ff;
-  position: relative;
   display: grid;
   place-items: center;
-  width: 38px;
-  height: 38px;
+  width: 34px;
+  height: 34px;
   flex: none;
-  border-radius: 11px;
-  color: #fff;
-  background-color: var(--kc);
-  background-image:
-    radial-gradient(120% 90% at 20% 10%, rgba(255, 255, 255, 0.3), transparent 60%),
-    linear-gradient(150deg, var(--ac, var(--kc)), #101016 115%);
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.25),
-    0 6px 14px rgba(0, 0, 0, 0.35);
+  border-radius: 9px;
+  border: 1px solid var(--line2);
+  background: var(--raise);
+  color: var(--mist);
 }
-.fxs-pic.k-landing {
-  --kc: #bf5af2;
-}
-.fxs-pic.k-presentation {
-  --kc: #ff9f0a;
-}
-.fxs-pic.k-game {
-  --kc: #ff375f;
-}
-.fxs-pic.k-app {
-  --kc: #30d158;
-}
-.fxs-pic.k-dashboard {
-  --kc: #32ade6;
-}
-.fxs-pic.k-other {
-  --kc: #8e8e93;
+.fxs-plist li.on .fxs-pic {
+  border-color: var(--gold-line);
+  color: var(--gold2);
 }
 .fxs-ptext {
   min-width: 0;
@@ -612,7 +585,7 @@ html.fxs-root body {
   transition:
     background var(--fast),
     color var(--fast),
-    transform 380ms var(--spring);
+    transform 180ms var(--spring);
 }
 .fxs-pacts button:hover {
   background: rgba(255, 255, 255, 0.09);
@@ -624,7 +597,7 @@ html.fxs-root body {
   height: 36px;
   margin-right: 6px;
   padding: 0 10px;
-  border: 1px solid rgba(10, 132, 255, 0.7);
+  border: 1px solid var(--gold-line);
   border-radius: var(--r-xs);
   background: var(--raise);
   outline: none;
@@ -685,7 +658,7 @@ html.fxs-root body {
 @keyframes fxs-in {
   from {
     opacity: 0;
-    transform: translateY(10px) scale(0.98);
+    transform: translateY(4px);
   }
 }
 
@@ -698,7 +671,7 @@ html.fxs-root body {
   margin: auto;
   padding: 24px;
   text-align: center;
-  animation: fxs-in 520ms var(--spring) backwards;
+  animation: fxs-in 220ms var(--spring) backwards;
 }
 .fxs-empty b {
   font-family: var(--display);
@@ -716,10 +689,8 @@ html.fxs-root body {
   height: 52px;
   margin-bottom: 6px;
   border-radius: 16px;
-  background: linear-gradient(160deg, var(--raise3), var(--raise));
-  box-shadow:
-    var(--hl),
-    var(--sh-1);
+  background: var(--raise);
+  border: 1px solid var(--line2);
   color: var(--mist);
 }
 .fxs-side-empty .fxs-empty-ic {
@@ -757,7 +728,7 @@ html.fxs-root body {
 .fxs-msg {
   display: flex;
   gap: 11px;
-  animation: fxs-in 460ms var(--spring) backwards;
+  animation: fxs-in 220ms var(--spring) backwards;
 }
 .fxs-msg.me {
   flex-direction: column;
@@ -769,9 +740,9 @@ html.fxs-root body {
   padding: 11px 15px;
   border-radius: var(--r-lg);
   border-bottom-right-radius: 8px;
-  background: linear-gradient(180deg, #2b8cff, #0a74f0);
-  color: #fff;
-  box-shadow: 0 8px 22px rgba(10, 132, 255, 0.22);
+  background: var(--raise2);
+  border: 1px solid var(--line2);
+  color: var(--snow);
   white-space: pre-wrap;
   overflow-wrap: anywhere;
 }
@@ -824,7 +795,7 @@ html.fxs-root body {
   position: relative;
   border: 1px solid var(--line);
   border-radius: var(--r-lg);
-  background: linear-gradient(180deg, var(--raise), #0e0e13);
+  background: var(--raise);
   box-shadow:
     var(--hl),
     var(--sh-1);
@@ -842,22 +813,6 @@ html.fxs-root body {
 .fxs-run-head span:first-child {
   flex: 1;
   min-width: 0;
-}
-.fxs-run[data-status='running'] .fxs-run-head span:first-child {
-  background: linear-gradient(90deg, var(--mist) 30%, #fff 50%, var(--mist) 70%);
-  background-size: 300% 100%;
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
-  animation: fxs-shine 2.4s linear infinite;
-}
-@keyframes fxs-shine {
-  from {
-    background-position: 100% 0;
-  }
-  to {
-    background-position: -200% 0;
-  }
 }
 .fxs-run-time,
 .fxs-step-time {
@@ -890,12 +845,12 @@ html.fxs-root body {
   content: '';
   position: absolute;
   inset: 0;
-  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.55), transparent);
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.25), transparent);
   transform: translateX(-100%);
-  animation: fxs-scan 1.6s var(--out) infinite;
+  animation: fxs-scan 1.6s linear infinite;
 }
 .fxs-run[data-status='done'] .fxs-run-bar i {
-  background: linear-gradient(90deg, #30d158, #64d2ff);
+  background: var(--gold-line);
 }
 .fxs-run[data-status='error'] .fxs-run-bar i,
 .fxs-run[data-status='stopped'] .fxs-run-bar i {
@@ -914,7 +869,7 @@ html.fxs-root body {
   display: flex;
   gap: 12px;
   padding: 8px 16px;
-  animation: fxs-in 460ms var(--spring) backwards;
+  animation: fxs-in 220ms var(--spring) backwards;
 }
 .fxs-step + .fxs-step::before {
   content: '';
@@ -941,7 +896,7 @@ html.fxs-root body {
     color var(--base);
 }
 .fxs-step[data-status='running'] .fxs-step-ic {
-  background: rgba(10, 132, 255, 0.18);
+  background: var(--gold-faint);
   color: var(--blue2);
 }
 .fxs-step[data-status='running'] .fxs-step-ic::after {
@@ -951,12 +906,12 @@ html.fxs-root body {
   border-radius: 14px;
   border: 1.5px solid transparent;
   border-top-color: var(--blue2);
-  border-right-color: rgba(75, 163, 255, 0.4);
+  border-right-color: transparent;
   animation: fxs-rot 1s linear infinite;
 }
 .fxs-step[data-status='done'] .fxs-step-ic {
-  background: rgba(48, 209, 88, 0.15);
-  color: var(--ok);
+  background: var(--raise2);
+  color: var(--mist);
 }
 .fxs-step[data-status='error'] .fxs-step-ic {
   background: rgba(255, 69, 58, 0.15);
@@ -1002,7 +957,7 @@ html.fxs-root body {
   color: var(--blue2);
   font-size: 12.5px;
   font-weight: 590;
-  transition: transform 380ms var(--spring);
+  transition: transform 180ms var(--spring);
 }
 .fxs-step-more svg {
   transition: transform var(--base) var(--spring);
@@ -1036,9 +991,9 @@ html.fxs-root body {
   gap: 12px;
   width: 100%;
   padding: 14px 16px;
-  border: 1px solid rgba(255, 214, 10, 0.25);
+  border: 1px solid var(--gold-line);
   border-radius: var(--r-lg);
-  background: rgba(255, 214, 10, 0.07);
+  background: var(--gold-faint);
   text-align: left;
 }
 .fxs-note > svg {
@@ -1069,35 +1024,9 @@ html.fxs-root body {
     var(--sh-1);
   transition: box-shadow var(--base) var(--out);
 }
-/* Rainbow focus ring: a spectrum border drawn by a masked layer, faded in on focus. */
-.fxs-ring {
-  position: absolute;
-  inset: -1px;
-  border-radius: inherit;
-  padding: 1.5px;
-  background: var(--spectrum);
-  -webkit-mask:
-    linear-gradient(#000 0 0) content-box,
-    linear-gradient(#000 0 0);
-  -webkit-mask-composite: xor;
-  mask-composite: exclude;
-  opacity: 0;
-  pointer-events: none;
-  transition: opacity var(--base) var(--out);
-}
-@supports (corner-shape: squircle) {
-  .fxs-ring {
-    corner-shape: squircle;
-  }
-}
-.fxs-composer:focus-within .fxs-ring {
-  opacity: 1;
-}
 .fxs-composer:focus-within {
-  box-shadow:
-    var(--hl),
-    0 0 0 5px rgba(100, 120, 255, 0.08),
-    0 18px 50px rgba(80, 90, 255, 0.12);
+  border-color: var(--gold-line);
+  box-shadow: 0 0 0 3px var(--gold-faint);
 }
 .fxs-composer textarea {
   display: block;
@@ -1119,10 +1048,8 @@ html.fxs-root body {
   width: 100%;
   margin: 6px 0 0;
   padding: 18px 14px 12px 22px;
-  background: linear-gradient(180deg, #16161c, #111116);
-  box-shadow:
-    var(--hl),
-    var(--sh-2);
+  background: var(--raise);
+  box-shadow: none;
 }
 .fxs-composer.big textarea {
   font-size: 18px;
@@ -1147,49 +1074,45 @@ html.fxs-root body {
   position: relative;
   display: grid;
   place-items: center;
-  width: 40px;
-  height: 40px;
+  width: 36px;
+  height: 36px;
   flex: none;
-  border: 0;
+  border: 1px solid var(--gold-line);
   border-radius: 50%;
   corner-shape: round;
-  background: var(--snow);
-  color: #000;
-  box-shadow:
-    0 6px 18px rgba(255, 255, 255, 0.12),
-    inset 0 -2px 0 rgba(0, 0, 0, 0.12);
+  background: var(--gold-faint);
+  color: var(--gold2);
   transition:
-    transform 420ms var(--spring),
-    background 200ms var(--out),
-    color 200ms var(--out),
-    box-shadow 200ms var(--out);
+    transform 160ms var(--out),
+    background 150ms var(--out),
+    color 150ms var(--out),
+    border-color 150ms var(--out);
 }
 .fxs-send:hover:not(:disabled) {
-  transform: scale(1.07);
+  background: rgba(201, 169, 110, 0.18);
 }
 .fxs-send:active:not(:disabled) {
-  transform: scale(0.9);
-  transition-duration: 90ms;
+  transform: scale(0.94);
+  transition-duration: 80ms;
 }
 .fxs-send:disabled {
-  background: var(--raise3);
+  border-color: var(--line2);
+  background: transparent;
   color: var(--haze);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
 }
 .fxs-send.stop {
-  background: var(--raise3);
+  border-color: var(--gold-line);
+  background: transparent;
   color: var(--snow);
-  box-shadow: none;
 }
 .fxs-send-ring {
   position: absolute;
-  inset: -3px;
+  inset: -4px;
   border-radius: 50%;
   corner-shape: round;
-  background: conic-gradient(#ff375f, #ff9f0a, #ffd60a, #30d158, #64d2ff, #0a84ff, #bf5af2, #ff375f);
-  -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 2.5px), #000 calc(100% - 2px));
-  mask: radial-gradient(farthest-side, transparent calc(100% - 2.5px), #000 calc(100% - 2px));
-  animation: fxs-rot 1.4s linear infinite;
+  border: 1px solid transparent;
+  border-top-color: var(--gold);
+  animation: fxs-rot 1s linear infinite;
 }
 .fxs-picker {
   position: relative;
@@ -1204,9 +1127,12 @@ html.fxs-root body {
   font-size: 13px;
   font-weight: 600;
 }
-.fxs-pill:hover,
+.fxs-pill:hover {
+  background: rgba(255, 255, 255, 0.09);
+}
 .fxs-pill[aria-expanded='true'] {
-  background: rgba(255, 255, 255, 0.11);
+  box-shadow: inset 0 0 0 1px var(--gold-line);
+  background: var(--gold-faint);
 }
 .fxs-pill > svg:first-child {
   color: var(--mist);
@@ -1300,14 +1226,14 @@ html.fxs-root body {
   text-align: left;
   transition:
     background var(--fast),
-    transform 380ms var(--spring);
+    transform 180ms var(--spring);
 }
 .fxs-opt:hover:not(:disabled) {
   background: rgba(255, 255, 255, 0.06);
 }
 .fxs-opt[aria-pressed='true'] {
-  background: rgba(10, 132, 255, 0.17);
-  box-shadow: inset 0 0 0 1px rgba(10, 132, 255, 0.35);
+  background: var(--gold-faint);
+  box-shadow: inset 0 0 0 1px var(--gold-line);
 }
 .fxs-opt:disabled {
   opacity: 0.45;
@@ -1333,12 +1259,7 @@ html.fxs-root body {
   line-height: 1.38;
 }
 .fxs-ultra {
-  display: inline-block;
-  background: var(--spectrum);
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
-  font-weight: 750;
+  color: var(--gold2);
 }
 .fxs-opt-ic {
   display: grid;
@@ -1384,158 +1305,54 @@ html.fxs-root body {
   overflow-y: auto;
   display: flex;
   justify-content: center;
-  padding: clamp(36px, 10vh, 120px) max(16px, 4vw) 56px;
+  align-items: flex-start;
+  padding: clamp(40px, 14vh, 160px) max(20px, 4vw) 56px;
   background: var(--bg);
   view-transition-name: fxs-main;
 }
-/* Ambient prism light: soft colour fields drifting slowly (transform only). */
-.fxs-ambient {
-  position: absolute;
-  inset: 0;
-  overflow: hidden;
-  pointer-events: none;
-}
-.fxs-ambient i {
-  position: absolute;
-  width: 70vmax;
-  height: 70vmax;
-  border-radius: 50%;
-  corner-shape: round;
-  opacity: 0.55;
-  will-change: transform;
-}
-.fxs-ambient .a {
-  left: -20vmax;
-  top: -38vmax;
-  background: radial-gradient(closest-side, rgba(10, 132, 255, 0.22), transparent);
-  animation: fxs-drift-a 22s ease-in-out infinite alternate;
-}
-.fxs-ambient .b {
-  right: -26vmax;
-  top: -30vmax;
-  background: radial-gradient(closest-side, rgba(191, 90, 242, 0.2), transparent);
-  animation: fxs-drift-b 26s ease-in-out infinite alternate;
-}
-.fxs-ambient .c {
-  left: 20%;
-  top: 18vmax;
-  width: 50vmax;
-  height: 50vmax;
-  background: radial-gradient(closest-side, rgba(255, 159, 10, 0.09), transparent);
-  animation: fxs-drift-c 30s ease-in-out infinite alternate;
-}
-@keyframes fxs-drift-a {
-  to {
-    transform: translate3d(8vmax, 6vmax, 0) scale(1.08);
-  }
-}
-@keyframes fxs-drift-b {
-  to {
-    transform: translate3d(-10vmax, 8vmax, 0) scale(0.94);
-  }
-}
-@keyframes fxs-drift-c {
-  to {
-    transform: translate3d(-6vmax, -5vmax, 0) scale(1.1);
-  }
-}
 .fxs-start-inner {
   position: relative;
-  width: min(720px, 100%);
+  width: min(680px, 100%);
   display: flex;
   flex-direction: column;
-  align-items: center;
-  gap: 18px;
-  text-align: center;
-}
-.fxs-start-inner > * {
-  animation: fxs-in 700ms var(--spring) backwards;
-}
-.fxs-start-inner > :nth-child(2) {
-  animation-delay: 70ms;
-}
-.fxs-start-inner > :nth-child(3) {
-  animation-delay: 140ms;
-}
-.fxs-start-inner > :nth-child(4) {
-  animation-delay: 210ms;
-}
-.fxs-start-inner > :nth-child(5) {
-  animation-delay: 280ms;
-}
-.fxs-start-inner > :nth-child(6) {
-  animation-delay: 350ms;
+  align-items: stretch;
+  gap: 14px;
+  text-align: left;
+  animation: fxs-in 220ms var(--out) backwards;
 }
 .fxs-hero-mark {
-  position: relative;
-  display: grid;
-  place-items: center;
-  width: 120px;
-  height: 120px;
-  margin-bottom: 4px;
-}
-.fxs-hero-mark::before {
-  content: '';
-  position: absolute;
-  inset: 6px;
-  border-radius: 50%;
-  corner-shape: round;
-  background: radial-gradient(closest-side, rgba(120, 120, 255, 0.22), rgba(255, 120, 80, 0.08) 60%, transparent);
-  animation: fxs-glow 4.5s ease-in-out infinite;
-}
-@keyframes fxs-glow {
-  50% {
-    opacity: 0.45;
-    transform: scale(0.9);
-  }
-}
-.fxs-hero-mark .fx-logo {
-  position: relative;
+  color: var(--gold);
+  margin-bottom: 10px;
 }
 .fxs-start h1 {
   font-family: var(--display);
-  font-size: clamp(40px, 6.4vw, 64px);
-  font-weight: 760;
-  letter-spacing: -0.05em;
-  line-height: 1;
-  text-wrap: balance;
+  font-size: clamp(32px, 4.4vw, 44px);
+  font-weight: 650;
+  letter-spacing: -0.035em;
+  line-height: 1.05;
 }
 .fxs-start-lead {
-  max-width: 540px;
-  margin-bottom: 8px;
+  max-width: 520px;
+  margin-bottom: 14px;
   color: var(--mist);
-  font-size: 17px;
+  font-size: 16px;
   line-height: 1.5;
-  text-wrap: balance;
 }
-.fxs-start-facts {
+.fxs-start-foot {
   display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  gap: 8px;
-  margin-top: 6px;
-}
-.fxs-start-facts li {
-  display: inline-flex;
-  align-items: center;
-  gap: 7px;
-  height: 32px;
-  padding: 0 12px;
-  border-radius: var(--r-pill);
-  background: rgba(255, 255, 255, 0.04);
-  box-shadow: inset 0 0 0 1px var(--line);
-  color: var(--mist);
-  font-size: 12.5px;
-}
-.fxs-start-facts svg {
+  justify-content: space-between;
+  gap: 12px;
+  padding-top: 14px;
+  border-top: 1px solid var(--line);
   color: var(--haze);
+  font-size: 13px;
 }
 .fxs-keys {
   width: 100%;
   padding: 18px;
   border: 1px solid var(--line2);
   border-radius: var(--r-xl);
-  background: linear-gradient(180deg, #15151b, #0f0f14);
+  background: var(--raise);
   box-shadow: var(--hl);
   text-align: left;
 }
@@ -1550,7 +1367,7 @@ html.fxs-root body {
   height: 40px;
   flex: none;
   border-radius: 12px;
-  background: rgba(255, 214, 10, 0.12);
+  background: var(--gold-faint);
   color: var(--warn);
 }
 .fxs-keys-head b {
@@ -1647,17 +1464,15 @@ html.fxs-root body {
     background var(--fast),
     color var(--fast),
     box-shadow var(--fast),
-    transform 380ms var(--spring);
+    transform 180ms var(--spring);
 }
 .fxs-seg button:hover {
   color: var(--snow);
 }
 .fxs-seg button[aria-pressed='true'] {
-  background: #4d4d56;
+  background: var(--raise3);
   color: var(--snow);
-  box-shadow:
-    0 3px 10px rgba(0, 0, 0, 0.35),
-    inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  box-shadow: inset 0 0 0 1px var(--line2);
 }
 .fxs-seg button em {
   font-style: normal;
@@ -1683,9 +1498,7 @@ html.fxs-root body {
   align-items: center;
   justify-content: center;
   overflow: hidden;
-  background:
-    radial-gradient(circle at 1px 1px, rgba(255, 255, 255, 0.06) 1px, transparent 0) 0 0 / 22px 22px,
-    #030304;
+  background: #08080a;
 }
 .fxs-viewport.desktop {
   align-items: stretch;
@@ -1701,12 +1514,9 @@ html.fxs-root body {
 }
 .fxs-device.tablet,
 .fxs-device.phone {
-  border: 12px solid #18181d;
-  border-radius: 52px;
-  box-shadow:
-    0 0 0 1.5px #3a3a43,
-    0 0 0 6px rgba(255, 255, 255, 0.02),
-    var(--sh-3);
+  border: 10px solid #18181b;
+  border-radius: 44px;
+  box-shadow: 0 0 0 1px #2e2e33;
   overflow: hidden;
   background: #fff;
 }
@@ -1825,9 +1635,8 @@ html.fxs-root body {
   max-width: 100%;
   padding: 18px;
   border-radius: var(--r-lg);
-  background: linear-gradient(180deg, var(--raise), #0d0d12);
+  background: var(--raise);
   border: 1px solid var(--line);
-  box-shadow: var(--sh-2);
   overflow: hidden;
   display: grid;
   gap: 10px;
@@ -1887,7 +1696,7 @@ html.fxs-root body {
   opacity: 0.8;
 }
 .fxs-building li[data-status='running'] {
-  background: rgba(10, 132, 255, 0.16);
+  background: var(--gold-faint);
   color: var(--blue2);
 }
 .fxs-building li[data-status='done'] {
@@ -1998,7 +1807,7 @@ html.fxs-root body {
   border-color: rgba(48, 209, 88, 0.35);
 }
 .fxs-versions li.cmp {
-  border-color: rgba(75, 163, 255, 0.6);
+  border-color: var(--gold-line);
 }
 .fxs-versions li > div {
   flex: 1;
@@ -2147,7 +1956,7 @@ html.fxs-root body {
   box-shadow: var(--sh-2);
   font-size: 14px;
   font-weight: 560;
-  animation: fxs-toast 460ms var(--spring) both;
+  animation: fxs-toast 220ms var(--spring) both;
 }
 .fxs-toast.ok svg {
   color: var(--ok);
@@ -2172,23 +1981,23 @@ html.fxs-root body {
 ::view-transition-group(fxs-chat),
 ::view-transition-group(fxs-stage),
 ::view-transition-group(fxs-main) {
-  animation-duration: 420ms;
-  animation-timing-function: cubic-bezier(0.2, 0.9, 0.25, 1.05);
+  animation-duration: 220ms;
+  animation-timing-function: cubic-bezier(0.2, 0, 0, 1);
 }
 ::view-transition-new(fxs-stage),
 ::view-transition-new(fxs-chat),
 ::view-transition-new(fxs-main) {
-  animation: fxs-vt-in 420ms cubic-bezier(0.2, 0.9, 0.25, 1.05) both;
+  animation: fxs-vt-in 220ms cubic-bezier(0.2, 0, 0, 1) both;
 }
 ::view-transition-old(fxs-stage),
 ::view-transition-old(fxs-chat),
 ::view-transition-old(fxs-main) {
-  animation: fxs-vt-out 240ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  animation: fxs-vt-out 160ms cubic-bezier(0.2, 0, 0, 1) both;
 }
 @keyframes fxs-vt-in {
   from {
     opacity: 0;
-    transform: translateY(14px) scale(0.985);
+    transform: translateY(6px);
   }
 }
 @keyframes fxs-vt-out {
@@ -2217,7 +2026,7 @@ html.fxs-root body {
     padding-bottom: env(safe-area-inset-bottom, 0px);
     padding-left: env(safe-area-inset-left, 0px);
     box-shadow: var(--sh-3);
-    animation: fxs-drawer 420ms var(--spring) both;
+    animation: fxs-drawer 220ms var(--spring) both;
   }
   .fxs[data-sidebar='open']::before {
     content: '';
@@ -2301,7 +2110,7 @@ html.fxs-root body {
     transition:
       background var(--fast),
       color var(--fast),
-      transform 380ms var(--spring);
+      transform 180ms var(--spring);
   }
   .fxs-tabs button[aria-pressed='true'] {
     background: var(--raise2);
@@ -2365,7 +2174,7 @@ html.fxs-root body {
     border-radius: 28px 28px 0 0;
     border-width: 1px 0 0;
     transform-origin: bottom center;
-    animation: fxs-sheet 420ms var(--spring) both;
+    animation: fxs-sheet 220ms var(--spring) both;
   }
   .fxs-grabber {
     display: block;
@@ -2426,7 +2235,7 @@ html.fxs-root body {
   align-content: start;
   gap: 22px;
   padding: 20px;
-  animation: fxs-in 420ms var(--spring) backwards;
+  animation: fxs-in 220ms var(--spring) backwards;
 }
 .fxs-memory h3 {
   margin: 0 0 8px;
@@ -2449,7 +2258,7 @@ html.fxs-root body {
   outline: none;
 }
 .fxs-memory textarea:focus {
-  border-color: rgba(75, 163, 255, 0.7);
+  border-color: var(--gold-line);
 }
 .fxs-tokens {
   display: grid;
@@ -2515,7 +2324,7 @@ html.fxs-root body {
   transition:
     background var(--fast),
     color var(--fast),
-    transform 380ms var(--spring);
+    transform 180ms var(--spring);
 }
 .fxs-decisions button:hover {
   background: rgba(255, 255, 255, 0.08);
@@ -2530,4 +2339,13 @@ html.fxs-root body {
 }
 .fxs-memory > .fxs-btn {
   justify-self: start;
+}
+.fxs-avatar,
+.fxs-opt-ic,
+.fxs-about-head {
+  color: var(--gold);
+}
+.fxs-avatar {
+  background: transparent;
+  box-shadow: inset 0 0 0 1px var(--line2);
 }

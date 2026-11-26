@@ -142,6 +142,8 @@ const ROLE_ICON: Record<string, IconName> = {
   reviewer: 'reviewer',
   answer: 'answer',
   router: 'router',
+  audit: 'eye',
+  playtester: 'game',
 };
 
 /** Current time, refreshed every second while `active` (0 until the first tick). */
@@ -183,7 +185,7 @@ function StepRow({ step, catalog, now }: { step: StepView; catalog: CatalogModel
       <div className="fxs-step-body">
         <div className="fxs-step-head">
           <b>{step.title}</b>
-          {step.model && <span className="fxs-chip">{modelName(step.model, catalog).replace(/^Effect /, '')}</span>}
+          {step.model && step.model !== 'browser' && <span className="fxs-chip">{modelName(step.model, catalog).replace(/^Effect /, '')}</span>}
           {step.status === 'done' && step.ms != null && <span className="fxs-step-time">{duration(step.ms)}</span>}
           {hasOut && (
             <button type="button" className="fxs-step-more" aria-expanded={open} onClick={() => setOpen((v) => !v)}>
@@ -278,7 +280,7 @@ function Message({ m, running, onRetry, onShowPreview, catalog }: { m: ChatMessa
   return (
     <div className={'fxs-msg ai' + (m.error ? ' err' : '')}>
       <span className="fxs-avatar">
-        <EffectLogo size={24} />
+        <EffectLogo size={18} mono />
       </span>
       <div className="fxs-msg-body">
         {m.run && <Timeline run={m.run} catalog={catalog} />}
@@ -381,17 +383,17 @@ export function ModelPicker(props: {
           <p className="fxs-pop-title">Модель</p>
           <button type="button" className="fxs-opt" aria-pressed={props.model === 'auto'} onClick={() => pick('auto')}>
             <span className="fxs-opt-ic">
-              <Icon name="spark" size={16} />
+              <Icon name="cpu" size={16} />
             </span>
             <span>
               <b>Авто</b>
-              <small>Effect подбирает модель для каждого агента: мощную — для кода, быструю — для проверок</small>
+              <small>Сильная модель пишет код, быстрая проверяет</small>
             </span>
           </button>
           {MODELS.map((m) => (
             <button key={m.id} type="button" className="fxs-opt" aria-pressed={props.model === m.id} disabled={!effect} onClick={() => pick(m.id)}>
               <span className={'fxs-opt-ic m-' + m.id}>
-                <EffectLogo size={18} />
+                <EffectLogo size={16} mono />
               </span>
               <span>
                 <b>
@@ -544,12 +546,11 @@ export const Composer = forwardRef<HTMLTextAreaElement, ComposerProps>(function 
           }
         }}
       />
-      <span className="fxs-ring" aria-hidden="true" />
       <div className="fxs-composer-row">
         <ModelPicker model={p.model} label={p.choiceLabel} onModel={p.onModel} catalog={p.catalog} status={p.status} surface={p.surface} siteUrl={p.siteUrl} />
         <EffortPicker effort={p.effort} onEffort={p.onEffort} />
         <span className="fxs-composer-sp" />
-        <span className="fxs-kbd-hint">Enter — отправить · Shift+Enter — строка</span>
+        {p.big && <span className="fxs-kbd-hint">Shift+Enter — новая строка</span>}
         {p.running ? (
           <button type="submit" className="fxs-send stop" aria-label="Остановить (Esc)">
             <i className="fxs-send-ring" aria-hidden="true" />
@@ -577,17 +578,12 @@ export function EmptyStart(props: {
   const s = props.status;
   return (
     <section className="fxs-start" aria-label="Новый проект">
-      <div className="fxs-ambient" aria-hidden="true">
-        <i className="a" />
-        <i className="b" />
-        <i className="c" />
-      </div>
       <div className="fxs-start-inner">
         <div className="fxs-hero-mark">
-          <EffectLogo size={84} live />
+          <EffectLogo size={36} mono />
         </div>
-        <h1>Что создадим?</h1>
-        <p className="fxs-start-lead">Опишите идею своими словами — команда агентов Effect спроектирует, нарисует, напишет и проверит проект.</p>
+        <h1>Новый проект</h1>
+        <p className="fxs-start-lead">Сайт, лендинг, игра, приложение или презентация. Напишите, что нужно и для кого.</p>
         {s.state === 'no-key' ? (
           <KeySetup env={s.env} />
         ) : s.state === 'no-sample' ? (
@@ -607,17 +603,10 @@ export function EmptyStart(props: {
           <AccessNote onManage={props.onManage} />
         ) : null}
         {props.children}
-        <ul className="fxs-start-facts" aria-label="Как работает Effect">
-          <li>
-            <Icon name="router" size={16} /> Сам поймёт: новый проект, правка или вопрос
-          </li>
-          <li>
-            <Icon name="tester" size={16} /> Тестировщик проверяет каждую сборку
-          </li>
-          <li>
-            <Icon name="history" size={16} /> Каждая генерация — новая версия
-          </li>
-        </ul>
+        <div className="fxs-start-foot">
+          <span>Модель и глубину Effect выберет сам</span>
+          <span>Enter — отправить</span>
+        </div>
       </div>
     </section>
   );
@@ -661,13 +650,13 @@ export function About({ prismUrl }: { prismUrl: string }) {
       {open && (
         <dialog open className="fxs-pop down" aria-label="О Effect">
           <div className="fxs-about-head">
-            <EffectLogo size={40} live />
+            <EffectLogo size={28} mono />
             <div>
               <b>Effect by Prism</b>
               <small>ИИ-студия команды Prism</small>
             </div>
           </div>
-          <p className="fxs-pop-note">Effect собирает сайты, приложения, игры и презентации командой агентов: архитектор, дизайнер, разработчик и тестировщик. Проекты хранятся в вашем браузере.</p>
+          <p className="fxs-pop-note">Сайты, приложения, игры и презентации. Над каждым проектом работают архитектор, дизайнер, разработчик и тестировщик. Проекты хранятся в этом браузере.</p>
           <p className="fxs-pop-note">
             <a href={prismUrl} target={external ? '_blank' : undefined} rel={external ? 'noopener' : undefined}>
               Проекты Prism →

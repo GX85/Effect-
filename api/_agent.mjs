@@ -76,23 +76,23 @@ var effortName = (e) => EFFORTS.find((x) => x.id === e)?.name ?? "\u0410\u0432\u
 
 // lib/effect/motion-kit.ts
 var MOTION_CSS = `<style id="fx-motion-css">
-:root{--fx-spring:cubic-bezier(.2,.9,.25,1.12);--fx-out:cubic-bezier(.2,.8,.2,1)}
+:root{--fx-spring:cubic-bezier(.2,0,0,1);--fx-out:cubic-bezier(.2,.8,.2,1)}
 @view-transition{navigation:auto}
 @media (prefers-reduced-motion:no-preference){html{scroll-behavior:smooth}}
-:where(button,[role=button],.btn,.button,input[type=submit],input[type=button],[data-press]){transition:transform .38s var(--fx-spring),box-shadow .38s var(--fx-out),background-color .2s,color .2s,opacity .2s;-webkit-tap-highlight-color:transparent}
-:where(button,[role=button],.btn,.button,input[type=submit],input[type=button],[data-press]):active:not(:disabled){transform:scale(.96);transition-duration:.08s}
-:where(.card,[data-lift]){transition:transform .5s var(--fx-spring),box-shadow .5s var(--fx-out)}
+:where(button,[role=button],.btn,.button,input[type=submit],input[type=button],[data-press]){transition:transform .2s var(--fx-spring),box-shadow .2s var(--fx-out),background-color .2s,color .2s,opacity .2s;-webkit-tap-highlight-color:transparent}
+:where(button,[role=button],.btn,.button,input[type=submit],input[type=button],[data-press]):active:not(:disabled){transform:scale(.97);transition-duration:.08s}
+:where(.card,[data-lift]){transition:transform .25s var(--fx-spring),box-shadow .25s var(--fx-out)}
 :where(a.card,.card[onclick],[data-lift]):active{transform:scale(.985);transition-duration:.1s}
-@media (hover:hover) and (pointer:fine){:where(.card,[data-lift]):hover{transform:translateY(-4px);box-shadow:0 22px 50px rgba(0,0,0,.14)}}
+@media (hover:hover) and (pointer:fine){:where(.card,[data-lift]):hover{transform:translateY(-2px);box-shadow:0 8px 24px rgba(0,0,0,.1)}}
 :where(a,button,input,select,textarea,summary,[tabindex]):focus-visible{outline:2px solid var(--fx-accent,var(--accent,currentColor));outline-offset:3px}
-html.fx-js [data-reveal]{opacity:0;transform:translateY(26px);transition:opacity .7s var(--fx-out),transform .95s var(--fx-spring);transition-delay:calc(var(--fx-i,0) * 70ms)}
+html.fx-js [data-reveal]{opacity:0;transform:translateY(14px);transition:opacity .5s var(--fx-out),transform .6s var(--fx-spring);transition-delay:calc(var(--fx-i,0) * 70ms)}
 html.fx-js [data-reveal].fx-in{opacity:1;transform:none}
 #fx-intro{position:fixed;inset:0;z-index:2147483000;display:grid;place-items:center;background:var(--fx-bg,var(--bg,#fff));pointer-events:none;animation:fx-intro-out .34s var(--fx-out) .26s forwards}
 #fx-intro i{width:34px;height:34px;border-radius:50%;border:3px solid rgba(127,127,127,.22);border-top-color:var(--fx-accent,var(--accent,#0a84ff));animation:fx-spin .7s linear infinite}
 @keyframes fx-intro-out{to{opacity:0;visibility:hidden}}
 @keyframes fx-spin{to{transform:rotate(1turn)}}
 .fx-toasts{position:fixed;left:50%;bottom:max(20px,env(safe-area-inset-bottom));z-index:2147483001;display:grid;gap:8px;justify-items:center;transform:translateX(-50%);pointer-events:none}
-.fx-toast{max-width:min(440px,calc(100vw - 32px));padding:12px 18px;border-radius:16px;background:rgba(22,22,26,.94);color:#fff;font:500 15px/1.35 system-ui,-apple-system,sans-serif;box-shadow:0 14px 40px rgba(0,0,0,.28);animation:fx-toast-in .5s var(--fx-spring) both}
+.fx-toast{max-width:min(440px,calc(100vw - 32px));padding:12px 18px;border-radius:16px;background:rgba(22,22,26,.94);color:#fff;font:500 15px/1.35 system-ui,-apple-system,sans-serif;box-shadow:0 14px 40px rgba(0,0,0,.28);animation:fx-toast-in .25s var(--fx-spring) both}
 .fx-toast.out{animation:fx-toast-out .3s var(--fx-out) forwards}
 @keyframes fx-toast-in{from{opacity:0;transform:translateY(14px) scale(.94)}}
 @keyframes fx-toast-out{to{opacity:0;transform:translateY(8px) scale(.97)}}
@@ -181,7 +181,6 @@ var OUTPUT_RULES = `Output rules:
 - Responsive from 360px to 1920px with no horizontal scrolling. Accessible: semantic landmarks, labelled controls, alt text, visible focus, sufficient contrast, prefers-reduced-motion respected.
 - Code quality: no console errors, no unfinished functions, every button does something.
 - Never animate width, height, top, left or margins \u2014 transform and opacity only, so phones stay at 60 FPS.`;
-var DESIGN_BAR = `Design bar: Apple-grade polish. Generous whitespace, confident typography with tight display tracking, a clear type scale, continuous rounded corners (use border-radius and, inside @supports (corner-shape: squircle), corner-shape: squircle), soft layered shadows, translucent surfaces only where they help, subtle depth. Motion: spring-like easing (cubic-bezier(.2,.9,.25,1.1)), staggered reveals, hover/press micro-interactions on transform and opacity only.`;
 function trimHtml(html, max = MAX_CONTEXT_HTML) {
   if (!html) return "";
   if (html.length <= max) return html;
@@ -211,6 +210,8 @@ function reportText(report) {
   if (!report) return "";
   return report.issues.map((i, n) => `${n + 1}. [${i.severity}] ${i.area ? i.area + ": " : ""}${i.problem}${i.fix ? " \u2192 " + i.fix : ""}`).join("\n");
 }
+var DESIGN_BAR = `Design bar: work like a senior product design team (Apple, Linear, Vercel level). A strict grid and precise alignment; a real type scale with tight tracking on headings; generous but deliberate spacing; crisp 1px hairlines; few elements, each with a job; continuous rounded corners where they help (border-radius, and inside @supports (corner-shape: squircle) corner-shape: squircle). One accent colour used sparingly. Calm, fast motion: 150\u2013250ms with standard easing (cubic-bezier(.2,0,0,1)), transform and opacity only.
+AVOID the generic AI look \u2014 none of these: emoji used as icons or bullets; sparkle/\u2726/\u2728 decorations; purple-to-blue gradient blobs or gradient text; glows on everything; grain or noise overlays as filler; generic glassmorphism (frosted cards everywhere); everything centred; oversized soft shadows; pill-badge clutter; clich\xE9 copy ("revolutionary", "seamless", "magic", "unlock", "next-level", "\u0440\u0435\u0432\u043E\u043B\u044E\u0446\u0438\u043E\u043D\u043D\u044B\u0439", "\u043C\u0430\u0433\u0438\u044F", "\u0431\u0435\u0441\u0448\u043E\u0432\u043D\u044B\u0439", "\u0440\u0430\u0441\u043A\u0440\u043E\u0439\u0442\u0435 \u043F\u043E\u0442\u0435\u043D\u0446\u0438\u0430\u043B"). Write short, concrete copy in natural language with real details from the subject.`;
 var ARCHITECT = `${IDENTITY}
 You are the ARCHITECT. Turn the request into a precise build specification that a developer can implement without guessing. Decide the information architecture, the content (write the real headlines and key copy), the features and the interactions. Be ambitious but realistic for one HTML file.
 For games, the spec is a game design: genre, core loop, controls (keyboard and touch), entities with behaviour, progression and difficulty curve, scoring, juice (particles, shake, sound), screens and states.
@@ -221,7 +222,8 @@ Reply with ONLY a JSON object, no prose, in this shape:
  "acceptance": ["testable statements of done"]}
 Omit "game" for non-games. Keep it under ~900 words.`;
 var DESIGNER = `${IDENTITY}
-You are the DESIGNER, an Apple-grade product designer. Create the visual system for this project: pick a direction that fits the subject (not a generic default), a palette with checked contrast (text on background \u2265 4.5:1, large text \u2265 3:1), a Google Fonts pairing, a type scale, spacing, continuous (squircle) radii, motion and the key components.
+You are the DESIGNER, an Apple-grade product designer. Create the visual system for this project: pick a direction that fits the subject (not a generic default \u2014 no purple-blue gradients, glow, grain or glassmorphism by reflex), a palette with checked contrast (text on background \u2265 4.5:1, large text \u2265 3:1), a Google Fonts pairing, a type scale, spacing, continuous (squircle) radii, motion and the key components.
+${DESIGN_BAR}
 Reply with ONLY a JSON object, no prose:
 {"direction": "name of the direction", "rationale": "one line: why it fits", "scheme": "light|dark",
  "palette": {"bg": "#\u2026", "surface": "#\u2026", "text": "#\u2026", "muted": "#\u2026", "accent": "#\u2026", "accentInk": "#\u2026", "line": "rgba(\u2026)", "extra": "#\u2026"},

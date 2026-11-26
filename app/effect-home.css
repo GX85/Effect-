@@ -2363,3 +2363,115 @@ html.fxh-root {
     padding: 0 14px;
   }
 }
+
+/* Restraint pass: one muted gold accent, hairlines instead of glows and gradients. */
+.fxh {
+  --accent: #c9a96e;
+  --gold: #c9a96e;
+  --gold-line: rgba(201, 169, 110, 0.5);
+  --spectrum: #c9a96e;
+}
+.fxh-spectrum {
+  background: none;
+  color: var(--snow);
+}
+.fxh-kicker {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--mist);
+  font-size: var(--fs-15);
+  letter-spacing: 0;
+}
+.fxh-eyebrow {
+  color: var(--gold);
+  margin-bottom: var(--sp-3);
+}
+.fxh-display,
+.fxh-display.small {
+  font-size: clamp(var(--fs-28) + 4px, 5vw, var(--fs-64));
+  letter-spacing: -0.04em !important;
+  line-height: 1.05;
+}
+.fxh-composer {
+  background: #121214;
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.45);
+}
+.fxh-composer::before {
+  display: none;
+}
+.fxh-composer:focus-within {
+  border-color: var(--gold-line);
+}
+.fxh-input textarea:focus {
+  border-color: var(--gold-line);
+  box-shadow: 0 0 0 3px rgba(201, 169, 110, 0.1);
+}
+.fxh-model-glow,
+.fxh-price-glow {
+  display: none;
+}
+.fxh-world,
+.fxh-model,
+.fxh-cell,
+.fxh-cell.big,
+.fxh-or,
+.fxh-team,
+.fxh-ent-card,
+.fxh-agents li,
+.fxh-efforts,
+.fxh-setup {
+  background: #0f0f11;
+  box-shadow: none;
+}
+.fxh-world:hover,
+.fxh-world::after,
+.fxh-model::after {
+  box-shadow: none;
+  background: none;
+}
+.fxh-meter span {
+  background: var(--gold);
+}
+.fxh-effort-row span.ultra {
+  border-color: var(--gold-line);
+  box-shadow: none;
+  color: var(--gold);
+}
+.fxh-effort-row span.ultra::before {
+  display: none;
+}
+.fxh-agents.is-live .fxh-agent-ic::after {
+  border-top-color: var(--gold);
+}
+.fxh-ent-ic {
+  background: rgba(201, 169, 110, 0.1);
+  color: var(--gold);
+}
+.fxh-agent-ic {
+  color: var(--gold);
+}
+.fxh-chat .me {
+  background: #232327;
+}
+.fxh-link,
+.fxh-open {
+  color: var(--gold);
+}
+.fxh-link:hover,
+.fxh-open:hover {
+  color: #d4b97f;
+}
+.fxh-or li:first-child {
+  background: rgba(201, 169, 110, 0.1);
+}
+.fxh-price h2 {
+  font-size: clamp(var(--fs-40), 7vw, var(--fs-104));
+}
+.fxh-steps b {
+  background: none;
+  color: var(--gold);
+}
+.fxh-dot {
+  display: none;
+}

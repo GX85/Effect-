@@ -11,23 +11,23 @@
  */
 
 export const MOTION_CSS = `<style id="fx-motion-css">
-:root{--fx-spring:cubic-bezier(.2,.9,.25,1.12);--fx-out:cubic-bezier(.2,.8,.2,1)}
+:root{--fx-spring:cubic-bezier(.2,0,0,1);--fx-out:cubic-bezier(.2,.8,.2,1)}
 @view-transition{navigation:auto}
 @media (prefers-reduced-motion:no-preference){html{scroll-behavior:smooth}}
-:where(button,[role=button],.btn,.button,input[type=submit],input[type=button],[data-press]){transition:transform .38s var(--fx-spring),box-shadow .38s var(--fx-out),background-color .2s,color .2s,opacity .2s;-webkit-tap-highlight-color:transparent}
-:where(button,[role=button],.btn,.button,input[type=submit],input[type=button],[data-press]):active:not(:disabled){transform:scale(.96);transition-duration:.08s}
-:where(.card,[data-lift]){transition:transform .5s var(--fx-spring),box-shadow .5s var(--fx-out)}
+:where(button,[role=button],.btn,.button,input[type=submit],input[type=button],[data-press]){transition:transform .2s var(--fx-spring),box-shadow .2s var(--fx-out),background-color .2s,color .2s,opacity .2s;-webkit-tap-highlight-color:transparent}
+:where(button,[role=button],.btn,.button,input[type=submit],input[type=button],[data-press]):active:not(:disabled){transform:scale(.97);transition-duration:.08s}
+:where(.card,[data-lift]){transition:transform .25s var(--fx-spring),box-shadow .25s var(--fx-out)}
 :where(a.card,.card[onclick],[data-lift]):active{transform:scale(.985);transition-duration:.1s}
-@media (hover:hover) and (pointer:fine){:where(.card,[data-lift]):hover{transform:translateY(-4px);box-shadow:0 22px 50px rgba(0,0,0,.14)}}
+@media (hover:hover) and (pointer:fine){:where(.card,[data-lift]):hover{transform:translateY(-2px);box-shadow:0 8px 24px rgba(0,0,0,.1)}}
 :where(a,button,input,select,textarea,summary,[tabindex]):focus-visible{outline:2px solid var(--fx-accent,var(--accent,currentColor));outline-offset:3px}
-html.fx-js [data-reveal]{opacity:0;transform:translateY(26px);transition:opacity .7s var(--fx-out),transform .95s var(--fx-spring);transition-delay:calc(var(--fx-i,0) * 70ms)}
+html.fx-js [data-reveal]{opacity:0;transform:translateY(14px);transition:opacity .5s var(--fx-out),transform .6s var(--fx-spring);transition-delay:calc(var(--fx-i,0) * 70ms)}
 html.fx-js [data-reveal].fx-in{opacity:1;transform:none}
 #fx-intro{position:fixed;inset:0;z-index:2147483000;display:grid;place-items:center;background:var(--fx-bg,var(--bg,#fff));pointer-events:none;animation:fx-intro-out .34s var(--fx-out) .26s forwards}
 #fx-intro i{width:34px;height:34px;border-radius:50%;border:3px solid rgba(127,127,127,.22);border-top-color:var(--fx-accent,var(--accent,#0a84ff));animation:fx-spin .7s linear infinite}
 @keyframes fx-intro-out{to{opacity:0;visibility:hidden}}
 @keyframes fx-spin{to{transform:rotate(1turn)}}
 .fx-toasts{position:fixed;left:50%;bottom:max(20px,env(safe-area-inset-bottom));z-index:2147483001;display:grid;gap:8px;justify-items:center;transform:translateX(-50%);pointer-events:none}
-.fx-toast{max-width:min(440px,calc(100vw - 32px));padding:12px 18px;border-radius:16px;background:rgba(22,22,26,.94);color:#fff;font:500 15px/1.35 system-ui,-apple-system,sans-serif;box-shadow:0 14px 40px rgba(0,0,0,.28);animation:fx-toast-in .5s var(--fx-spring) both}
+.fx-toast{max-width:min(440px,calc(100vw - 32px));padding:12px 18px;border-radius:16px;background:rgba(22,22,26,.94);color:#fff;font:500 15px/1.35 system-ui,-apple-system,sans-serif;box-shadow:0 14px 40px rgba(0,0,0,.28);animation:fx-toast-in .25s var(--fx-spring) both}
 .fx-toast.out{animation:fx-toast-out .3s var(--fx-out) forwards}
 @keyframes fx-toast-in{from{opacity:0;transform:translateY(14px) scale(.94)}}
 @keyframes fx-toast-out{to{opacity:0;transform:translateY(8px) scale(.97)}}

@@ -6,8 +6,14 @@ import { LOGO } from '@/lib/effect/logo';
 export { KIND_LABELS as kindLabels } from '@/lib/effect/agent/models';
 
 /** The Effect mark: a triangle with a glowing rainbow outline. `live` adds a slow glow breath. */
-export function EffectLogo({ size = 28, title, live = false }: { size?: number; title?: string; live?: boolean }) {
+export function EffectLogo({ size = 28, title, live = false, mono = false }: { size?: number; title?: string; live?: boolean; mono?: boolean }) {
   const u = useId().replace(/[^a-zA-Z0-9]/g, '');
+  if (mono)
+    return (
+      <svg className="fx-logo" width={size} height={size} viewBox={LOGO.viewBox} fill="none" aria-hidden="true">
+        <path d={LOGO.path} stroke="currentColor" strokeWidth={2.4} strokeLinejoin="round" />
+      </svg>
+    );
   const g = 'fxRainbow' + u;
   const f = 'fxGlow' + u;
   return (

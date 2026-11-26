@@ -315,26 +315,20 @@ export default function EffectHome() {
         <section className="fxh-hero">
           <PrismHero />
           <div className="fxh-hero-copy">
-            <p className="fxh-kicker">
-              <span className="fxh-dot" /> ИИ-студия · команда агентов · by Prism
-            </p>
+            <p className="fxh-kicker">Effect by Prism</p>
             <h1>
               Опиши идею.
               <br />
-              <span className="fxh-spectrum">Получи эффект.</span>
+              <span className="fxh-dim">Получи эффект.</span>
             </h1>
-            <p className="fxh-lead">Сайт, приложение, игра или презентация — спроектированы, написаны и проверены агентами Effect.</p>
+            <p className="fxh-lead">Сайты, приложения, игры и презентации. Архитектор, дизайнер, разработчик и тестировщик собирают проект и проверяют его в браузере.</p>
           </div>
           <Composer />
         </section>
 
         <section className="fxh-section" id="agents">
-          <p className="fxh-eyebrow fxh-reveal">Как работает Effect</p>
-          <h2 className="fxh-display fxh-reveal">
-            Команда агентов.
-            <br />
-            <span className="fxh-dim">Не просто чат.</span>
-          </h2>
+          <p className="fxh-eyebrow fxh-reveal">Агенты</p>
+          <h2 className="fxh-display fxh-reveal">Как Effect собирает проект</h2>
           <ol className="fxh-agents fxh-reveal">
             {agents.map(([icon, name, text], i) => (
               <li key={name} style={{ '--i': i } as React.CSSProperties}>
@@ -352,11 +346,8 @@ export default function EffectHome() {
         </section>
 
         <section className="fxh-section" id="worlds">
-          <h2 className="fxh-display fxh-reveal">
-            Что угодно.
-            <br />
-            <span className="fxh-dim">Своими словами.</span>
-          </h2>
+          <p className="fxh-eyebrow fxh-reveal">Возможности</p>
+          <h2 className="fxh-display fxh-reveal">Что можно сделать</h2>
           <div className="fxh-worlds">
             {(
               [
@@ -383,18 +374,15 @@ export default function EffectHome() {
         </section>
 
         <section className="fxh-section">
-          <h2 className="fxh-display small fxh-reveal">
-            Студия, а не генератор.
-            <br />
-            <span className="fxh-dim">Доводите проект до финала.</span>
-          </h2>
+          <p className="fxh-eyebrow fxh-reveal">Студия</p>
+          <h2 className="fxh-display small fxh-reveal">Правки, версии и код в одном окне</h2>
           <div className="fxh-bento">
             <div className="fxh-cell big fxh-reveal">
               <div className="fxh-chat" aria-hidden="true">
                 <span className="me">Добавь тарифы и сделай акцент фиолетовым</span>
-                <span className="ai">Разработчик внёс правку, тестировщик проверил ✓</span>
+                <span className="ai">Разработчик внёс правку, тестировщик проверил</span>
                 <span className="me">Как поменять шрифт заголовков?</span>
-                <span className="ai">Ответил на вопрос, проект не трогал ✓</span>
+                <span className="ai">Ответил на вопрос, проект не трогал</span>
               </div>
               <h3>Один чат без режимов</h3>
               <p>Effect сам понимает, что вы хотите: новый проект, правку или ответ. Модель и глубину можно оставить на «Авто».</p>
@@ -478,11 +466,8 @@ export default function EffectHome() {
         </section>
 
         <section className="fxh-section" id="models">
-          <h2 className="fxh-display fxh-reveal">
-            Модели Effect.
-            <br />
-            <span className="fxh-dim">И любые другие.</span>
-          </h2>
+          <p className="fxh-eyebrow fxh-reveal">Модели</p>
+          <h2 className="fxh-display fxh-reveal">Три модели Effect и каталог OpenRouter</h2>
           <div className="fxh-models">
             {MODELS.map((m, i) => (
               <div key={m.id} className="fxh-reveal" style={{ '--i': i } as React.CSSProperties}>
@@ -537,11 +522,7 @@ export default function EffectHome() {
 
         <section className="fxh-section" id="business">
           <p className="fxh-eyebrow fxh-reveal">Для компаний</p>
-          <h2 className="fxh-display fxh-reveal">
-            Готово к работе
-            <br />
-            <span className="fxh-dim">в вашей инфраструктуре.</span>
-          </h2>
+          <h2 className="fxh-display fxh-reveal">Работает в вашей инфраструктуре</h2>
           <div className="fxh-ent">
             {enterprise.map(([icon, title, text], i) => (
               <div key={title} className="fxh-ent-card fxh-reveal" style={{ '--i': i } as React.CSSProperties}>
@@ -571,12 +552,7 @@ export default function EffectHome() {
         </section>
 
         <section className="fxh-price">
-          <div className="fxh-price-glow" aria-hidden="true" />
-          <h2 className="fxh-reveal">
-            <span className="fxh-spectrum">Ваш код.</span>
-            <br />
-            Без привязки.
-          </h2>
+          <h2 className="fxh-reveal">Код принадлежит вам</h2>
           <p className="fxh-muted fxh-reveal">Один HTML-файл без зависимостей и водяных знаков. Забирайте и размещайте где угодно.</p>
           <div className="fxh-facts">
             {[
@@ -602,7 +578,7 @@ export default function EffectHome() {
             <div>
               <p className="fxh-eyebrow">Effect by Prism</p>
               <h2>Создано командой Prism</h2>
-              <p className="fxh-muted">Effect — продукт студии Prism: мы проектируем и делаем сайты, приложения и интерфейсы. Effect собирает этот опыт в команду агентов, которая работает по вашим словам.</p>
+              <p className="fxh-muted">Prism проектирует и разрабатывает сайты, приложения и интерфейсы. Effect — наш продукт: в нём наши правила вёрстки, дизайна и проверки качества работают как команда агентов.</p>
               <Link className="fxh-link" href="/#prism">
                 Проекты Prism →
               </Link>

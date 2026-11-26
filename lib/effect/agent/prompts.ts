@@ -56,7 +56,7 @@ const OUTPUT_RULES = `Output rules:
 - Code quality: no console errors, no unfinished functions, every button does something.
 - Never animate width, height, top, left or margins — transform and opacity only, so phones stay at 60 FPS.`;
 
-const DESIGN_BAR = `Design bar: Apple-grade polish. Generous whitespace, confident typography with tight display tracking, a clear type scale, continuous rounded corners (use border-radius and, inside @supports (corner-shape: squircle), corner-shape: squircle), soft layered shadows, translucent surfaces only where they help, subtle depth. Motion: spring-like easing (cubic-bezier(.2,.9,.25,1.1)), staggered reveals, hover/press micro-interactions on transform and opacity only.`;
+
 
 function trimHtml(html: string | undefined, max = MAX_CONTEXT_HTML): string {
   if (!html) return '';
@@ -93,6 +93,9 @@ function reportText(report?: Report | null): string {
   return report.issues.map((i, n) => `${n + 1}. [${i.severity}] ${i.area ? i.area + ': ' : ''}${i.problem}${i.fix ? ' → ' + i.fix : ''}`).join('\n');
 }
 
+const DESIGN_BAR = `Design bar: work like a senior product design team (Apple, Linear, Vercel level). A strict grid and precise alignment; a real type scale with tight tracking on headings; generous but deliberate spacing; crisp 1px hairlines; few elements, each with a job; continuous rounded corners where they help (border-radius, and inside @supports (corner-shape: squircle) corner-shape: squircle). One accent colour used sparingly. Calm, fast motion: 150–250ms with standard easing (cubic-bezier(.2,0,0,1)), transform and opacity only.
+AVOID the generic AI look — none of these: emoji used as icons or bullets; sparkle/✦/✨ decorations; purple-to-blue gradient blobs or gradient text; glows on everything; grain or noise overlays as filler; generic glassmorphism (frosted cards everywhere); everything centred; oversized soft shadows; pill-badge clutter; cliché copy ("revolutionary", "seamless", "magic", "unlock", "next-level", "революционный", "магия", "бесшовный", "раскройте потенциал"). Write short, concrete copy in natural language with real details from the subject.`;
+
 const ARCHITECT = `${IDENTITY}
 You are the ARCHITECT. Turn the request into a precise build specification that a developer can implement without guessing. Decide the information architecture, the content (write the real headlines and key copy), the features and the interactions. Be ambitious but realistic for one HTML file.
 For games, the spec is a game design: genre, core loop, controls (keyboard and touch), entities with behaviour, progression and difficulty curve, scoring, juice (particles, shake, sound), screens and states.
@@ -104,7 +107,8 @@ Reply with ONLY a JSON object, no prose, in this shape:
 Omit "game" for non-games. Keep it under ~900 words.`;
 
 const DESIGNER = `${IDENTITY}
-You are the DESIGNER, an Apple-grade product designer. Create the visual system for this project: pick a direction that fits the subject (not a generic default), a palette with checked contrast (text on background ≥ 4.5:1, large text ≥ 3:1), a Google Fonts pairing, a type scale, spacing, continuous (squircle) radii, motion and the key components.
+You are the DESIGNER, an Apple-grade product designer. Create the visual system for this project: pick a direction that fits the subject (not a generic default — no purple-blue gradients, glow, grain or glassmorphism by reflex), a palette with checked contrast (text on background ≥ 4.5:1, large text ≥ 3:1), a Google Fonts pairing, a type scale, spacing, continuous (squircle) radii, motion and the key components.
+${DESIGN_BAR}
 Reply with ONLY a JSON object, no prose:
 {"direction": "name of the direction", "rationale": "one line: why it fits", "scheme": "light|dark",
  "palette": {"bg": "#…", "surface": "#…", "text": "#…", "muted": "#…", "accent": "#…", "accentInk": "#…", "line": "rgba(…)", "extra": "#…"},

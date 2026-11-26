@@ -509,7 +509,7 @@ export default function Studio({ engine, onExit, initialPrompt, siteUrl, prismUr
           <Icon name="sidebar" />
         </button>
         <button type="button" className="fxs-brand" onClick={onExit} aria-label={onExit ? 'Effect by Prism — на главную' : 'Effect by Prism'} disabled={!onExit}>
-          <EffectLogo size={26} live />
+          <EffectLogo size={24} />
           <span>Effect</span>
         </button>
         {current && (
