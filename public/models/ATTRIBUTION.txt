@@ -1,0 +1,10 @@
+Racing Bicycle
+Author: Francesco Coldesina (https://sketchfab.com/topfrank2013)
+Source: https://sketchfab.com/3d-models/racing-bicycle-223901fe94de4d55b6324e7d7e273469
+License: Creative Commons Attribution 4.0 International (CC BY 4.0)
+https://creativecommons.org/licenses/by/4.0/
+
+Obtained from the public Allen Institute for AI Objaverse archive:
+https://huggingface.co/datasets/allenai/objaverse/resolve/main/glbs/000-115/223901fe94de4d55b6324e7d7e273469.glb
+
+Adaptations for Rapid by Prism: converted specular/glossiness materials to metallic/roughness, compressed textures to WebP, normalized display scale and orientation, added dynamic paint masking and studio lighting. Original geometric detail retained. No endorsement by the original creator is implied. The separate Rapid studio images are fictional brand concepts.

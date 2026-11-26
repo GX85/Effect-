@@ -1,0 +1,23 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "framework": null,
+  "buildCommand": "npm run build:static",
+  "outputDirectory": "dist/client",
+  "cleanUrls": true,
+  "trailingSlash": false,
+  "functions": {
+    "api/inquiry.mjs": {
+      "maxDuration": 15
+    },
+    "api/effect.mjs": {
+      "maxDuration": 300
+    }
+  },
+  "redirects": [
+    {
+      "source": "/",
+      "destination": "/effect",
+      "permanent": false
+    }
+  ]
+}

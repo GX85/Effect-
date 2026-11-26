@@ -1,0 +1,29 @@
+<title>Effect</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<meta name="theme-color" content="#000000">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
+<link rel="preload" as="image" href="prism-hero-960.webp" media="(max-width: 700px)" fetchpriority="high">
+<link rel="preload" as="image" href="prism-hero.webp" media="(min-width: 701px)" fetchpriority="high">
+<style>
+/* Effect is a deliberately dark product: one visual world on every host theme.
+   Landing = photoreal prism hero and chapters; #studio = the full-screen AI studio. */
+:root {
+  color-scheme: dark;
+  --page: #000;
+  --text: #f5f5f7;
+}
+body { background: var(--page); color: var(--text); font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Inter', 'Helvetica Neue', Arial, sans-serif; }
+[hidden] { display: none !important; }
+/*LANDING_CSS*/
+/*STUDIO_CSS*/
+/* Artifact overrides: system/Inter stack, content visible at rest (reveals only slide in). */
+.fxh { font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Inter', 'Helvetica Neue', Arial, sans-serif; }
+.fxh-reveal { opacity: 1; transform: translateY(22px); }
+.fxh-reveal.in { transform: none; }
+html.fx-studio-on, html.fx-studio-on body { overflow: hidden; height: 100%; }
+</style>
+<!--LANDING-->
+<div id="studio" hidden></div>
+<script>/*APP*/</script>
