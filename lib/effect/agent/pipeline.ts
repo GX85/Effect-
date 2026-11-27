@@ -54,6 +54,8 @@ export type PipelineInput = {
   diagnose?: (html: string, kind: Kind) => Promise<AuditReport[]>;
   /** Plays a game for a few seconds in a sandboxed frame (games only). */
   playtest?: (html: string) => Promise<PlayReport | null>;
+  /** HTML of an element picked in the inspector: the request is about it. */
+  focus?: string;
 };
 
 /** Codes after which nothing else should be attempted in this run. */
@@ -185,6 +187,7 @@ export async function runPipeline(input: PipelineInput): Promise<DoneEvent | nul
       history: project?.history,
       ultra: route.effort === 'ultra',
       memory: route.intent === 'new' ? undefined : project?.memory,
+      focus: input.focus?.slice(0, 4000),
     };
     const polish = (h: string) => (route.kind === 'game' ? withMotionKit(withGameKit(h), { intro: false }) : withMotionKit(h));
 

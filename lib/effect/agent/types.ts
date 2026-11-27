@@ -143,6 +143,8 @@ export type StepContext = {
   files?: Record<string, string>;
   /** Ask for SEARCH/REPLACE blocks instead of the whole document. */
   patch?: boolean;
+  /** HTML of the element the person picked in the inspector. */
+  focus?: string;
 };
 
 export type StepStatus = 'pending' | 'running' | 'done' | 'skipped' | 'error';

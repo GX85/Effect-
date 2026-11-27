@@ -88,6 +88,10 @@ function checksText(checks?: Check[]): string {
   return parts.join('\n\n');
 }
 
+function focusBlock(ctx: StepContext): string {
+  return ctx.focus ? '\n\nThe request is about this element (picked in the preview) — change it and keep the rest as is:\n' + ctx.focus : '';
+}
+
 function memoryBlock(ctx: StepContext): string {
   return ctx.memory ? '\n\nProject memory (stay consistent with it):\n' + ctx.memory.slice(0, 3000) : '';
 }
@@ -185,7 +189,7 @@ export function buildMessages(role: Role, ctx: StepContext): Msg[] {
           : `Apply this change:\n${req}`;
         return [
           { role: 'system', content: DEVELOPER + '\n\n' + PATCH_RULES },
-          { role: 'user', content: `Project files:\n\n${listing}${spec}${design}${memoryBlock(ctx)}${hist}\n\n${task}` },
+          { role: 'user', content: `Project files:\n\n${listing}${spec}${design}${memoryBlock(ctx)}${focusBlock(ctx)}${hist}\n\n${task}` },
         ];
       }
       if (ctx.intent === 'edit' && !ctx.report) {
@@ -193,7 +197,7 @@ export function buildMessages(role: Role, ctx: StepContext): Msg[] {
           { role: 'system', content: DEVELOPER },
           {
             role: 'user',
-            content: `Here is the current ${kind} "${ctx.projectName || ''}":\n\n${trimHtml(ctx.html)}${spec}${design}${memoryBlock(ctx)}${hist}\n\nApply this change and return the FULL updated HTML document. Keep everything that was not asked to change exactly as it is (content, features, design), and keep the design system consistent:\n${req}`,
+            content: `Here is the current ${kind} "${ctx.projectName || ''}":\n\n${trimHtml(ctx.html)}${spec}${design}${memoryBlock(ctx)}${focusBlock(ctx)}${hist}\n\nApply this change and return the FULL updated HTML document. Keep everything that was not asked to change exactly as it is (content, features, design), and keep the design system consistent:\n${req}`,
           },
         ];
       }
@@ -233,7 +237,7 @@ export function buildMessages(role: Role, ctx: StepContext): Msg[] {
         {
           role: 'user',
           content:
-            (ctx.html ? `Open project "${ctx.projectName || ''}" (${KIND_LABELS[ctx.kind]}).${spec}${memoryBlock(ctx)}\n\nCode excerpt:\n${trimHtml(ctx.html, 40_000)}` : 'No project is open yet.') +
+            (ctx.html ? `Open project "${ctx.projectName || ''}" (${KIND_LABELS[ctx.kind]}).${spec}${memoryBlock(ctx)}${focusBlock(ctx)}\n\nCode excerpt:\n${trimHtml(ctx.html, 40_000)}` : 'No project is open yet.') +
             `${hist}\n\nQuestion:\n${req}`,
         },
       ];

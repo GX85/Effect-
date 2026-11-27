@@ -33,6 +33,7 @@ import {
   type Project,
 } from '@/lib/effect/project';
 import type { CatalogModel, Engine, EngineStatus } from './engine';
+import type { Picked } from '@/lib/effect/inspector';
 import { About, Composer, Conversation, EmptyStart, Sidebar } from './parts';
 import Stage, { type Device, type View } from './Stage';
 import { EffectLogo, Icon } from '../ui';
@@ -88,6 +89,11 @@ export default function Studio({ engine, onExit, initialPrompt, siteUrl, prismUr
   const [pane, setPane] = useState<'chat' | 'stage'>('chat');
   const [sidebar, setSidebar] = useState(false);
   const [draft, setDraft] = useState('');
+  const [focusEl, setFocusEl] = useState<Picked | null>(null);
+  const focusRef = useRef<Picked | null>(null);
+  useEffect(() => {
+    focusRef.current = focusEl;
+  }, [focusEl]);
   const [toasts, setToasts] = useState<Toast[]>([]);
   const [ready, setReady] = useState(false);
   const [queued, setQueued] = useState<string | null>(null);
@@ -304,6 +310,8 @@ export default function Studio({ engine, onExit, initialPrompt, siteUrl, prismUr
       };
 
       const cur = live$.current;
+      const focus = focusRef.current;
+      setFocusEl(null);
       try {
         await runPipeline({
           request: text,
@@ -313,6 +321,7 @@ export default function Studio({ engine, onExit, initialPrompt, siteUrl, prismUr
           onEvent,
           signal: ctl.signal,
           syntax: cur.engine.syntax ?? null,
+          focus: focus?.html,
           diagnose: makeDiagnose(),
           playtest: makePlaytest(),
         });
@@ -587,6 +596,14 @@ export default function Studio({ engine, onExit, initialPrompt, siteUrl, prismUr
               onManage={manage}
               catalog={catalog}
             />
+            {focusEl && (
+              <div className="fxs-focus">
+                <span>Про элемент: {focusEl.label}</span>
+                <button type="button" className="fxs-icon-btn" aria-label="Убрать элемент из запроса" onClick={() => setFocusEl(null)}>
+                  <Icon name="close" size={16} />
+                </button>
+              </div>
+            )}
             {composer}
           </section>
           <Stage
@@ -602,6 +619,11 @@ export default function Studio({ engine, onExit, initialPrompt, siteUrl, prismUr
             onRestore={restore}
             onMemory={setMemory}
             onEditFile={editFile}
+            onAsk={(el) => {
+              setFocusEl(el);
+              transition(() => setPane('chat'));
+              window.setTimeout(() => composerRef.current?.focus(), 60);
+            }}
             onDownload={download}
             onCopy={copy}
             flash={flash}

@@ -261,6 +261,9 @@ function checksText(checks) {
   if (ran) parts.push(runtime.length ? "Runtime facts (measured in a browser at 390px and 1440px):\n" + runtime.map((c) => `- [${c.severity}] ${c.message}`).join("\n") : "Runtime facts: no errors, no overflow, no accessibility problems found in a browser at 390px and 1440px.");
   return parts.join("\n\n");
 }
+function focusBlock(ctx) {
+  return ctx.focus ? "\n\nThe request is about this element (picked in the preview) \u2014 change it and keep the rest as is:\n" + ctx.focus : "";
+}
 function memoryBlock(ctx) {
   return ctx.memory ? "\n\nProject memory (stay consistent with it):\n" + ctx.memory.slice(0, 3e3) : "";
 }
@@ -363,7 +366,7 @@ ${req}`;
           { role: "system", content: DEVELOPER + "\n\n" + PATCH_RULES },
           { role: "user", content: `Project files:
 
-${listing}${spec}${design}${memoryBlock(ctx)}${hist}
+${listing}${spec}${design}${memoryBlock(ctx)}${focusBlock(ctx)}${hist}
 
 ${task}` }
         ];
@@ -375,7 +378,7 @@ ${task}` }
             role: "user",
             content: `Here is the current ${kind} "${ctx.projectName || ""}":
 
-${trimHtml(ctx.html)}${spec}${design}${memoryBlock(ctx)}${hist}
+${trimHtml(ctx.html)}${spec}${design}${memoryBlock(ctx)}${focusBlock(ctx)}${hist}
 
 Apply this change and return the FULL updated HTML document. Keep everything that was not asked to change exactly as it is (content, features, design), and keep the design system consistent:
 ${req}`
@@ -445,7 +448,7 @@ ${trimHtml(ctx.html, 14e4)}` }
         { role: "system", content: ANSWER },
         {
           role: "user",
-          content: (ctx.html ? `Open project "${ctx.projectName || ""}" (${KIND_LABELS[ctx.kind]}).${spec}${memoryBlock(ctx)}
+          content: (ctx.html ? `Open project "${ctx.projectName || ""}" (${KIND_LABELS[ctx.kind]}).${spec}${memoryBlock(ctx)}${focusBlock(ctx)}
 
 Code excerpt:
 ${trimHtml(ctx.html, 4e4)}` : "No project is open yet.") + `${hist}
@@ -938,7 +941,8 @@ async function runPipeline(input) {
       projectName: project?.name,
       history: project?.history,
       ultra: route2.effort === "ultra",
-      memory: route2.intent === "new" ? void 0 : project?.memory
+      memory: route2.intent === "new" ? void 0 : project?.memory,
+      focus: input.focus?.slice(0, 4e3)
     };
     const polish = (h) => route2.kind === "game" ? withMotionKit(withGameKit(h), { intro: false }) : withMotionKit(h);
     const runStep = async (plan, ctx, mode, id = plan.id) => {

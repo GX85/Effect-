@@ -1,6 +1,7 @@
 'use client';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { cleanEditedHtml, MAX_EDIT_HTML, withBridge } from '@/lib/effect/bridge';
+import { cleanInspected, STYLE_PROPS, withInspector, type Picked } from '@/lib/effect/inspector';
 import { highlightHtml } from '@/lib/effect/highlight';
 import { clock, duration, thumbnailHtml, type Project, type RunView } from '@/lib/effect/project';
 import { emptyMemory, type Memory } from '@/lib/effect/brain';
@@ -213,6 +214,66 @@ function FilesView({ files, busy, onApply }: { files: Record<string, string>; bu
   );
 }
 
+function InspectorPanel({ el, onSet, onAsk, onClose }: { el: Picked; onSet: (prop: string, value: string | boolean) => void; onAsk: () => void; onClose: () => void }) {
+  const [text, setText] = useState(el.text ?? '');
+  const num = (prop: string, unit = 'px') => (e: React.ChangeEvent<HTMLInputElement>) => onSet(prop, e.target.value + unit);
+  const color = (v: string) => (v === 'transparent' ? '#000000' : v);
+  return (
+    <aside className="fxs-inspector" aria-label="Инспектор элемента">
+      <header>
+        <b>{el.label}</b>
+        <button type="button" className="fxs-icon-btn" aria-label="Закрыть инспектор" onClick={onClose}>
+          <Icon name="close" size={16} />
+        </button>
+      </header>
+      {el.text !== null && (
+        <label>
+          <span>Текст</span>
+          <textarea rows={2} value={text} onChange={(e) => setText(e.target.value)} onBlur={() => text !== el.text && onSet('text', text)} />
+        </label>
+      )}
+      <div className="fxs-insp-row">
+        <label>
+          <span>Цвет текста</span>
+          <input type="color" defaultValue={color(el.styles.color)} onChange={(e) => onSet(STYLE_PROPS.color, e.target.value)} />
+        </label>
+        <label>
+          <span>Фон</span>
+          <input type="color" defaultValue={color(el.styles.background)} onChange={(e) => onSet(STYLE_PROPS.background, e.target.value)} />
+        </label>
+      </div>
+      <label>
+        <span>Размер шрифта · {el.styles.fontSize}px</span>
+        <input type="range" min={10} max={120} defaultValue={el.styles.fontSize} onChange={num(STYLE_PROPS.fontSize)} />
+      </label>
+      <label>
+        <span>Насыщенность</span>
+        <select defaultValue={String(Math.round(el.styles.fontWeight / 100) * 100)} onChange={(e) => onSet(STYLE_PROPS.fontWeight, e.target.value)}>
+          {[300, 400, 500, 600, 700, 800].map((w) => (
+            <option key={w} value={w}>
+              {w}
+            </option>
+          ))}
+        </select>
+      </label>
+      <label>
+        <span>Внутренний отступ · {el.styles.padding}px</span>
+        <input type="range" min={0} max={96} defaultValue={el.styles.padding} onChange={num(STYLE_PROPS.padding)} />
+      </label>
+      <label>
+        <span>Скругление · {el.styles.radius}px</span>
+        <input type="range" min={0} max={48} defaultValue={el.styles.radius} onChange={num(STYLE_PROPS.radius)} />
+      </label>
+      <label className="fxs-insp-check">
+        <input type="checkbox" defaultChecked={el.styles.hidden} onChange={(e) => onSet('hidden', e.target.checked)} /> Скрыть элемент
+      </label>
+      <button type="button" className="fxs-btn sm fxs-insp-ask" onClick={onAsk}>
+        Спросить Effect про этот элемент
+      </button>
+    </aside>
+  );
+}
+
 function Versions({ project, onRestore, onCompare, compare }: { project: Project; onRestore: (id: string) => void; onCompare: (id: string | null) => void; compare: string | null }) {
   const list = [...project.versions].reverse();
   if (!list.length) return <EmptyState icon="history" title="Версий пока нет" text="Каждая генерация и правка сохраняется отдельной версией." />;
@@ -317,18 +378,22 @@ export default function Stage(props: {
   onRestore: (id: string) => void;
   onMemory: (m: Memory) => void;
   onEditFile: (path: string, content: string) => void;
+  onAsk: (el: Picked) => void;
   onDownload: () => void;
   onCopy: () => void;
   flash: (t: string, tone?: 'ok' | 'err') => void;
 }) {
   const { project, html, view, device } = props;
   const [bridged, setBridged] = useState<string | null>(null);
+  const [mode, setMode] = useState<'text' | 'inspect'>('text');
+  const [picked, setPicked] = useState<Picked | null>(null);
   // Text editing ends when the project, the view or a run changes (derived during render).
   const block = project.id + '|' + view + '|' + String(props.running);
   const [lastBlock, setLastBlock] = useState(block);
   if (block !== lastBlock) {
     setLastBlock(block);
     if (bridged !== null) setBridged(null);
+    if (picked) setPicked(null);
   }
   const [compare, setCompare] = useState<string | null>(null);
   const [maxed, setMaxed] = useState(false);
@@ -346,13 +411,19 @@ export default function Stage(props: {
   useEffect(() => {
     if (!editing) return;
     const onMsg = (e: MessageEvent) => {
-      const data = e.data as { fx?: string; html?: string };
-      if (e.source !== frameWin.current || data?.fx !== 'html' || typeof data.html !== 'string' || data.html.length > MAX_EDIT_HTML) return;
-      onEdit(cleanEditedHtml(data.html), 'text');
+      const data = e.data as { fx?: string; html?: string; el?: Picked };
+      if (e.source !== frameWin.current) return;
+      if (data?.fx === 'pick' && data.el && typeof data.el.id === 'string') return setPicked(data.el);
+      if (data?.fx !== 'html' || typeof data.html !== 'string' || data.html.length > MAX_EDIT_HTML) return;
+      onEdit(mode === 'inspect' ? cleanInspected(data.html) : cleanEditedHtml(data.html), mode === 'inspect' ? 'code' : 'text');
     };
     window.addEventListener('message', onMsg);
     return () => window.removeEventListener('message', onMsg);
-  }, [editing, onEdit]);
+  }, [editing, onEdit, mode]);
+  const setStyle = (prop: string, value: string | boolean) => {
+    if (!picked) return;
+    frameWin.current?.postMessage({ fx: 'set', id: picked.id, prop, value }, '*');
+  };
 
   useEffect(() => {
     if (!maxed) return;
@@ -408,18 +479,40 @@ export default function Stage(props: {
           <button
             type="button"
             className="fxs-tool"
-            aria-pressed={editing}
+            aria-pressed={editing && mode === 'text'}
             disabled={!has || props.running}
             title="Править текст прямо в превью"
             onClick={() => {
-              if (editing) setBridged(null);
+              setPicked(null);
+              if (editing && mode === 'text') setBridged(null);
               else {
+                setMode('text');
                 setBridged(withBridge(html));
                 props.flash('Кликните по тексту в превью и пишите');
               }
             }}
           >
             <Icon name="text" size={16} /> <span className="fxs-hide-md">Текст</span>
+          </button>
+        )}
+        {view === 'preview' && (
+          <button
+            type="button"
+            className="fxs-tool"
+            aria-pressed={editing && mode === 'inspect'}
+            disabled={!has || props.running}
+            title="Инспектор: выберите элемент в превью"
+            onClick={() => {
+              setPicked(null);
+              if (editing && mode === 'inspect') setBridged(null);
+              else {
+                setMode('inspect');
+                setBridged(withInspector(html));
+                props.flash('Выберите элемент в превью');
+              }
+            }}
+          >
+            <Icon name="cursor" size={16} /> <span className="fxs-hide-md">Инспектор</span>
           </button>
         )}
         <button type="button" className="fxs-tool" disabled={!has} onClick={props.onCopy} title="Копировать HTML">
@@ -450,6 +543,9 @@ export default function Stage(props: {
               <Building run={props.run} />
             ) : (
               <EmptyState icon="eye" title="Превью появится здесь" text="Опишите проект в диалоге — превью обновится прямо во время работы агентов." />
+            )}
+            {editing && mode === 'inspect' && picked && (
+              <InspectorPanel key={picked.id} el={picked} onSet={setStyle} onAsk={() => props.onAsk(picked)} onClose={() => setPicked(null)} />
             )}
             {has && props.running && (
               <output className="fxs-stream-badge">

@@ -2384,3 +2384,112 @@ html.fxs-root body {
   color: var(--snow);
   border-bottom-color: var(--gold);
 }
+
+/* Inspector */
+.fxs-inspector {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  z-index: 5;
+  width: min(300px, calc(100% - 24px));
+  max-height: calc(100% - 24px);
+  overflow-y: auto;
+  display: grid;
+  gap: 12px;
+  padding: 12px 14px 14px;
+  border: 1px solid var(--line2);
+  border-radius: var(--r-lg);
+  background: var(--pop);
+  box-shadow: var(--sh-2);
+  animation: fxs-in 200ms var(--out) backwards;
+}
+.fxs-inspector header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.fxs-inspector header b {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 13px;
+  font-family: var(--mono);
+  color: var(--gold2);
+}
+.fxs-inspector label {
+  display: grid;
+  gap: 6px;
+  color: var(--mist);
+  font-size: 12px;
+}
+.fxs-inspector textarea,
+.fxs-inspector select {
+  width: 100%;
+  padding: 7px 9px;
+  border: 1px solid var(--line2);
+  border-radius: var(--r-xs);
+  background: var(--raise);
+  color: var(--snow);
+  font-size: 13px;
+  resize: vertical;
+}
+.fxs-inspector input[type='color'] {
+  width: 100%;
+  height: 30px;
+  padding: 2px;
+  border: 1px solid var(--line2);
+  border-radius: var(--r-xs);
+  background: var(--raise);
+}
+.fxs-inspector input[type='range'] {
+  accent-color: var(--gold);
+}
+.fxs-insp-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+.fxs-insp-check {
+  display: flex !important;
+  align-items: center;
+  gap: 8px !important;
+}
+.fxs-insp-ask {
+  border: 1px solid var(--gold-line);
+  background: var(--gold-faint);
+  color: var(--gold2);
+}
+.fxs-focus {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 14px -2px;
+  padding: 6px 6px 6px 12px;
+  border: 1px solid var(--gold-line);
+  border-radius: var(--r-md);
+  background: var(--gold-faint);
+  color: var(--gold2);
+  font-size: 13px;
+}
+.fxs-focus span {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+@media (max-width: 760px) {
+  .fxs-inspector {
+    top: auto;
+    bottom: 10px;
+    right: 10px;
+    left: 10px;
+    width: auto;
+    max-height: 55%;
+  }
+}
+.fxs-stage-bar > * {
+  flex-shrink: 0;
+}
