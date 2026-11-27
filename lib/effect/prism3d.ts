@@ -45,7 +45,7 @@ function ray(THREE: typeof T, a: T.Vector2, b: T.Vector2, w0: number, w1: number
     vertexShader: 'varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }',
     fragmentShader:
       'uniform vec3 uColor; uniform float uOpacity; uniform float uTime; uniform float uSpeed; varying vec2 vUv;' +
-      'void main(){ float edge = 1.0 - abs(vUv.y - 0.5) * 2.0; edge = pow(edge, 1.6);' +
+      'void main(){ float y = (vUv.y - 0.5) * 2.0; float edge = exp(-y * y * 3.2) * 0.75 + exp(-y * y * 28.0) * 0.6;' +
       ' float fade = smoothstep(0.0, 0.06, vUv.x) * (1.0 - smoothstep(0.55, 1.0, vUv.x) * 0.85);' +
       ' float pulse = exp(-pow((fract(vUv.x - uTime * uSpeed) - 0.5) * 9.0, 2.0)) * 0.6;' +
       ' gl_FragColor = vec4(uColor * (1.0 + pulse), edge * fade * uOpacity); }',
@@ -126,9 +126,24 @@ export function mountPrism3D(host: HTMLElement, THREE: typeof T, opts: Prism3DOp
     attenuationDistance: 7,
   });
   if ('dispersion' in heavy) (heavy as unknown as { dispersion: number }).dispersion = 5;
-  const light = new THREE.MeshPhysicalMaterial({ color: 0xffffff, metalness: 0.1, roughness: 0.06, transparent: true, opacity: 0.2, clearcoat: 1, envMapIntensity: 2.2, iridescence: 0.35 });
+  const light = new THREE.MeshPhysicalMaterial({ color: 0xffffff, metalness: 0.2, roughness: 0.03, transparent: true, opacity: 0.32, clearcoat: 1, envMapIntensity: 3, iridescence: 0.45, specularIntensity: 1 });
   const prism = new THREE.Mesh(geo, opts.phone ? light : heavy);
-  const edges = new THREE.LineSegments(new THREE.EdgesGeometry(geo, 25), new THREE.LineBasicMaterial({ color: 0xe9dcc2, transparent: true, opacity: 0.35 }));
+  // Fresnel rim: a bright edge where the glass turns away from the camera (additive shell).
+  const rim = new THREE.Mesh(
+    geo,
+    new THREE.ShaderMaterial({
+      transparent: true,
+      depthWrite: false,
+      blending: THREE.AdditiveBlending,
+      uniforms: { uTint: { value: new THREE.Color(0xf4ead6) } },
+      vertexShader:
+        'varying float vF; void main(){ vec4 mv = modelViewMatrix * vec4(position, 1.0); vec3 n = normalize(normalMatrix * normal); vec3 v = normalize(-mv.xyz); vF = pow(1.0 - abs(dot(n, v)), 2.6); gl_Position = projectionMatrix * mv; }',
+      fragmentShader: 'uniform vec3 uTint; varying float vF; void main(){ gl_FragColor = vec4(uTint * vF * 1.6, vF); }',
+    }),
+  );
+  rim.scale.setScalar(1.003);
+  prism.add(rim);
+  const edges = new THREE.LineSegments(new THREE.EdgesGeometry(geo, 25), new THREE.LineBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.6, blending: THREE.AdditiveBlending }));
   prism.add(edges);
 
   const group = new THREE.Group();
@@ -140,12 +155,14 @@ export function mountPrism3D(host: HTMLElement, THREE: typeof T, opts: Prism3DOp
   const entry = new THREE.Vector2(-0.62, 0.22);
   const exit = new THREE.Vector2(0.58, -0.02);
   const rays = new THREE.Group();
-  rays.add(ray(THREE, new THREE.Vector2(-7.5, 1.05), entry, 0.06, 0.07, 0xffffff, 0.95, time, 0.35));
-  rays.add(ray(THREE, entry, exit, 0.07, 0.12, 0xfff4e0, 0.55, time, 0.35));
+  // Entry beam: a bright core plus a wide soft halo.
+  rays.add(ray(THREE, new THREE.Vector2(-7.5, 1.05), entry, 0.09, 0.1, 0xffffff, 1.2, time, 0.35));
+  rays.add(ray(THREE, new THREE.Vector2(-7.5, 1.05), entry, 0.5, 0.45, 0xffffff, 0.16, time, 0.35));
+  rays.add(ray(THREE, entry, exit, 0.1, 0.22, 0xfff4e0, 0.7, time, 0.35));
   SPECTRUM.forEach((c, i) => {
     const angle = 0.28 - i * 0.075;
     const end = new THREE.Vector2(exit.x + Math.cos(-angle) * 9, exit.y + Math.sin(-angle) * 9 + 0.6);
-    rays.add(ray(THREE, exit, end, 0.03, 0.55, c, 0.55, time, 0.22));
+    rays.add(ray(THREE, exit, end, 0.08, 1.25, c, 0.85, time, 0.22));
   });
   rays.add(ray(THREE, exit, new THREE.Vector2(-0.1, -0.78), 0.03, 0.05, 0xd4b97f, 0.18, time, 0.5));
   rays.add(ray(THREE, new THREE.Vector2(-0.1, -0.78), new THREE.Vector2(-3.8, -2.6), 0.04, 0.3, 0x9fb7ff, 0.1, time, 0.3));

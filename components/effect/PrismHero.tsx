@@ -29,7 +29,8 @@ export default function PrismHero() {
   useEffect(() => {
     const el = stage.current;
     const host = el?.querySelector<HTMLElement>('.fx-prism-gl');
-    if (!el || !host || reduce || prism3DBlocked()) return;
+    // Phones keep the photo with CSS light: it looks better there than a lighter 3D tier.
+    if (!el || !host || reduce || prism3DBlocked() || window.matchMedia('(max-width: 760px), (pointer: coarse)').matches) return;
     let handle: Prism3D | null = null;
     let cancelled = false;
     el.classList.add('is-loading3d');

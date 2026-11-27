@@ -86,7 +86,7 @@ export function initLanding(open: Open) {
   const stage = $('.fx-prism');
   if (stage && 'IntersectionObserver' in window && 'ResizeObserver' in window) bindParallax(stage, reduce);
   const glHost = stage?.querySelector<HTMLElement>('.fx-prism-gl');
-  if (stage && glHost && !prism3DBlocked()) {
+  if (stage && glHost && !prism3DBlocked() && !matchMedia('(max-width: 760px), (pointer: coarse)').matches) {
     stage.classList.add('is-loading3d');
     const url = THREE_URL;
     const start = () =>
