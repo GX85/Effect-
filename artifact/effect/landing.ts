@@ -4,6 +4,10 @@
  * hero composer. Everything pauses off screen and respects reduced motion.
  */
 import { bindParallax } from '../../lib/effect/parallax.ts';
+import { mountPrism3D, prism3DBlocked } from '../../lib/effect/prism3d.ts';
+
+/** three.js from cdnjs, exact version (the artifact cannot load npm modules). */
+const THREE_URL = 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.180.0/three.module.min.js';
 
 type Open = (prompt?: string, send?: boolean) => void;
 
@@ -81,6 +85,29 @@ export function initLanding(open: Open) {
   // Prism parallax (shared with the site)
   const stage = $('.fx-prism');
   if (stage && 'IntersectionObserver' in window && 'ResizeObserver' in window) bindParallax(stage, reduce);
+  const glHost = stage?.querySelector<HTMLElement>('.fx-prism-gl');
+  if (stage && glHost && !prism3DBlocked()) {
+    stage.classList.add('is-loading3d');
+    const url = THREE_URL;
+    const start = () =>
+      (import(/* webpackIgnore: true */ url) as Promise<typeof import('three')>)
+        .then((THREE) => {
+          const h = mountPrism3D(glHost, THREE, {
+            phone: matchMedia('(max-width: 760px)').matches,
+            onReady: () => stage.classList.replace('is-loading3d', 'is-3d'),
+            onFail: (r) => {
+              stage.classList.remove('is-loading3d', 'is-3d');
+              stage.dataset.fx3d = r;
+            },
+          });
+          if (!h) stage.classList.remove('is-loading3d');
+        })
+        .catch(() => {
+          stage.classList.remove('is-loading3d');
+          stage.dataset.fx3d = 'load';
+        });
+    setTimeout(start, 900);
+  }
 
   // Hero composer: Enter / send opens the studio and starts the agents
   const form = $<HTMLFormElement>('.fxh-composer');

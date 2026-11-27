@@ -2,6 +2,7 @@
 import { useEffect, useRef } from 'react';
 import { useReducedMotion } from '@/hooks/use-reduced-motion';
 import { bindParallax } from '@/lib/effect/parallax';
+import { mountPrism3D, prism3DBlocked, type Prism3D } from '@/lib/effect/prism3d';
 
 /**
  * Photoreal prism render with live light on top. Every light layer is a plain HTML
@@ -22,6 +23,39 @@ export default function PrismHero() {
     const el = stage.current;
     if (!el) return;
     return bindParallax(el, reduce);
+  }, [reduce]);
+
+  // Real-time 3D prism, loaded after first paint; the photo stays as the fallback.
+  useEffect(() => {
+    const el = stage.current;
+    const host = el?.querySelector<HTMLElement>('.fx-prism-gl');
+    if (!el || !host || reduce || prism3DBlocked()) return;
+    let handle: Prism3D | null = null;
+    let cancelled = false;
+    el.classList.add('is-loading3d');
+    const start = () =>
+      import('three')
+        .then((THREE) => {
+          if (cancelled) return;
+          handle = mountPrism3D(host, THREE, {
+            phone: window.matchMedia('(max-width: 760px)').matches,
+            onReady: () => el.classList.replace('is-loading3d', 'is-3d'),
+            onFail: (r) => {
+              el.classList.remove('is-loading3d', 'is-3d');
+              el.dataset.fx3d = r;
+            },
+          });
+          if (!handle) el.classList.remove('is-loading3d');
+        })
+        .catch(() => el.classList.remove('is-loading3d'));
+    const idle = (window as Window & { requestIdleCallback?: (cb: () => void, o?: object) => number }).requestIdleCallback;
+    const t = idle ? idle(start, { timeout: 1500 }) : window.setTimeout(start, 700);
+    return () => {
+      cancelled = true;
+      if (!idle) window.clearTimeout(t);
+      handle?.dispose();
+      el.classList.remove('is-loading3d', 'is-3d');
+    };
   }, [reduce]);
 
   return (
@@ -66,6 +100,7 @@ export default function PrismHero() {
       ].map(([x, y, d], i) => (
         <i key={i} className={'fx-prism-spark s' + i} data-depth={d} style={{ left: x + '%', top: y + '%' }} />
       ))}
+      <div className="fx-prism-gl" />
       <div className="fx-prism-vignette" />
     </div>
   );

@@ -2475,3 +2475,56 @@ html.fxh-root {
 .fxh-dot {
   display: none;
 }
+
+/* 3D prism: the photo stays until the WebGL scene draws its first frame, then cross-fades. */
+.fx-prism-gl {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+}
+.fx-prism-canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  transition: opacity 600ms cubic-bezier(0.2, 0, 0, 1);
+}
+.fx-prism.is-3d .fx-prism-canvas {
+  opacity: 1;
+}
+.fx-prism .fx-prism-layer {
+  transition: opacity 600ms cubic-bezier(0.2, 0, 0, 1);
+}
+.fx-prism.is-3d .fx-prism-layer {
+  opacity: 0;
+}
+.fx-prism.is-3d .fx-prism-layer * {
+  animation-play-state: paused !important;
+}
+/* Loading: a quiet gold hairline sweeps under the hero while three.js loads. */
+.fx-prism.is-loading3d::after {
+  content: '';
+  position: absolute;
+  left: 20%;
+  right: 20%;
+  bottom: 14%;
+  z-index: 2;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(201, 169, 110, 0.7), transparent);
+  animation: fx-prism-load 1.4s linear infinite;
+}
+@keyframes fx-prism-load {
+  from {
+    transform: translateX(-30%);
+    opacity: 0.2;
+  }
+  50% {
+    opacity: 1;
+  }
+  to {
+    transform: translateX(30%);
+    opacity: 0.2;
+  }
+}
