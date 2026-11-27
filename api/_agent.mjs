@@ -125,9 +125,9 @@ var MOTION_DOC = `Effect Motion Kit is injected into every page automatically \u
 - After a form action call FXMotion.toast('\u0417\u0430\u044F\u0432\u043A\u0430 \u043E\u0442\u043F\u0440\u0430\u0432\u043B\u0435\u043D\u0430') (plus an inline success state).
 - Set --fx-accent and --fx-bg in :root so the brief intro loader and focus rings match the brand.
 - Your own motion must animate only transform and opacity, and respect prefers-reduced-motion.`;
-var strip = (html) => html.replace(/<style id="fx-motion-css">[\s\S]*?<\/style>/g, "").replace(/<script id="fx-motion">[\s\S]*?<\/script>/g, "").replace(/<div id="fx-intro"[^>]*>[\s\S]*?<\/div>/g, "");
+var stripMotionKit = (html) => html.replace(/<style id="fx-motion-css">[\s\S]*?<\/style>/g, "").replace(/<script id="fx-motion">[\s\S]*?<\/script>/g, "").replace(/<div id="fx-intro"[^>]*>[\s\S]*?<\/div>/g, "");
 function withMotionKit(html, opts = {}) {
-  let out = strip(html);
+  let out = stripMotionKit(html);
   const headEnd = out.search(/<\/head>/i);
   out = headEnd >= 0 ? out.slice(0, headEnd) + MOTION_CSS + out.slice(headEnd) : MOTION_CSS + out;
   if (opts.intro !== false) {
@@ -174,6 +174,7 @@ var KIND_GUIDES = {
 };
 var OUTPUT_RULES = `Output rules:
 - Reply with the HTML document only: start with <!doctype html> and end with </html>. No Markdown fences, no commentary before or after.
+- Exception for big multi-page websites (4+ pages): you may reply with several files instead, each wrapped as <file path="index.html">\u2026</file>, then other pages (about.html, \u2026), styles.css and app.js. Link them normally (<link rel="stylesheet" href="styles.css">, <a href="about.html">); Effect bundles them for preview and export.
 - Everything lives in that one file: inline <style> and <script>. External resources allowed ONLY: Google Fonts (fonts.googleapis.com / fonts.gstatic.com) and libraries from https://cdnjs.cloudflare.com with an exact version. No external images, video or fetch calls: build visuals with CSS, SVG, canvas or WebGL.
 - Include <meta name="viewport" content="width=device-width,initial-scale=1">, <html lang> matching the copy language and a meaningful <title>.
 - All visible copy in the language of the person's request (Russian if they write Russian). Specific, believable copy; never lorem ipsum, never "Coming soon" placeholders for requested features.
@@ -290,6 +291,26 @@ Request:
 ${req}` }
       ];
     case "developer": {
+      if (ctx.patch) {
+        const files = ctx.files ?? { "index.html": ctx.html ?? "" };
+        const listing = Object.entries(files).map(([p, c]) => `<file path="${p}">
+${trimHtml(c, 12e4)}
+</file>`).join("\n\n");
+        const task = ctx.report ? `Fix these problems (critical and major first):
+${reportText(ctx.report)}
+
+Original request, for reference:
+${req}` : `Apply this change:
+${req}`;
+        return [
+          { role: "system", content: DEVELOPER + "\n\n" + PATCH_RULES },
+          { role: "user", content: `Project files:
+
+${listing}${spec}${design}${memoryBlock(ctx)}${hist}
+
+${task}` }
+        ];
+      }
       if (ctx.intent === "edit" && !ctx.report) {
         return [
           { role: "system", content: DEVELOPER },
@@ -378,6 +399,13 @@ ${req}`
       ];
   }
 }
+var PATCH_RULES = `This is a TARGETED EDIT. Do not return the whole document. Reply with one or more SEARCH/REPLACE blocks and nothing else:
+<<<<<<< SEARCH path=index.html
+exact lines copied from the current file (enough to be unique)
+=======
+the new lines
+>>>>>>> REPLACE
+Rules: SEARCH must match the current file exactly, character for character, and occur once. Keep blocks small; use several blocks for several places. To create a new file use an empty SEARCH with its path. Change only what the request needs.`;
 var CONTINUE = "Your previous answer was cut off. Continue EXACTLY where it stopped \u2014 the very next characters \u2014 without repeating anything and without any commentary or code fences. Finish the document through </html>.";
 
 // lib/effect/agent/router.ts
@@ -647,6 +675,108 @@ function auditOutput(reports) {
   return checks.map((c) => `\u2022 [${c.severity}] ${c.message}`).join("\n");
 }
 
+// lib/effect/patch.ts
+var BLOCK = /<{5,9} ?SEARCH(?:[ \t]+(?:path=)?["']?([^\s"'>]+)["']?)?[ \t]*\r?\n([\s\S]*?)\r?\n={5,9}[ \t]*\r?\n([\s\S]*?)\r?\n?>{5,9} ?REPLACE/g;
+function parsePatches(text, defaultPath = "index.html") {
+  const out = [];
+  for (const m of text.matchAll(BLOCK)) out.push({ path: m[1] || defaultPath, search: m[2], replace: m[3] });
+  return out;
+}
+var hasPatches = (text) => /<{5,9} ?SEARCH/.test(text) && />{5,9} ?REPLACE/.test(text);
+function fuzzyFind(hay, needle) {
+  const tokens = needle.trim().split(/\s+/).filter(Boolean);
+  if (!tokens.length) return null;
+  const esc = (t) => t.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const re = new RegExp(tokens.map(esc).join("\\s+"), "g");
+  const hits = [...hay.matchAll(re)];
+  if (hits.length === 0) return null;
+  if (hits.length > 1) return -1;
+  return [hits[0].index, hits[0].index + hits[0][0].length];
+}
+function applyPatches(files, patches) {
+  const next = { ...files };
+  const failed = [];
+  let applied = 0;
+  for (const p of patches) {
+    if (!p.search.trim()) {
+      next[p.path] = p.replace;
+      applied++;
+      continue;
+    }
+    const src = next[p.path];
+    if (src == null) {
+      failed.push({ patch: p, reason: "no such file" });
+      continue;
+    }
+    const first = src.indexOf(p.search);
+    if (first >= 0) {
+      if (src.indexOf(p.search, first + 1) >= 0) {
+        failed.push({ patch: p, reason: "matches more than once" });
+        continue;
+      }
+      next[p.path] = src.slice(0, first) + p.replace + src.slice(first + p.search.length);
+      applied++;
+      continue;
+    }
+    const f = fuzzyFind(src, p.search);
+    if (f === null) failed.push({ patch: p, reason: "not found" });
+    else if (f === -1) failed.push({ patch: p, reason: "matches more than once" });
+    else {
+      next[p.path] = src.slice(0, f[0]) + p.replace + src.slice(f[1]);
+      applied++;
+    }
+  }
+  return { ok: failed.length === 0 && applied > 0, files: next, applied, failed };
+}
+
+// lib/effect/vfs.ts
+var SAFE = /^[a-z0-9][a-z0-9._/-]{0,80}$/i;
+var isSafePath = (p) => SAFE.test(p) && !p.includes("..") && !p.startsWith("/");
+function parseFiles(text) {
+  const out = {};
+  for (const m of text.matchAll(/<file\s+path=["']([^"']+)["']\s*>\r?\n?([\s\S]*?)\r?\n?<\/file>/g)) {
+    const path = m[1].trim();
+    if (isSafePath(path)) out[path] = m[2];
+  }
+  return out;
+}
+function inlinePage(html, files) {
+  let out = html.replace(/<link\b[^>]*rel=["']?stylesheet["']?[^>]*>/gi, (tag) => {
+    const href = tag.match(/href=["']([^"']+)["']/i)?.[1];
+    return href && files[href] != null ? `<style data-file="${href}">
+${files[href]}
+</style>` : tag;
+  });
+  out = out.replace(
+    /<script\b([^>]*)\bsrc=["']([^"']+)["']([^>]*)><\/script>/gi,
+    (tag, a, src, b) => files[src] != null ? `<script${(a + b).trimEnd()} data-file="${src}">
+${files[src].replace(/<\/script/gi, "<\\/script")}
+</script>` : tag
+  );
+  return out;
+}
+function bundle(files) {
+  const entry = files["index.html"] ?? "";
+  const pages = Object.keys(files).filter((p) => p !== "index.html" && /\.html?$/i.test(p));
+  const html = inlinePage(entry, files);
+  if (!pages.length) return html;
+  const data = JSON.stringify(Object.fromEntries(pages.map((p) => [p, inlinePage(files[p], files)]))).replace(/</g, "\\u003c");
+  const router = `<script id="fx-pages" type="application/json">${data}</script><script id="fx-router">(function(){var P=JSON.parse(document.getElementById('fx-pages').textContent),home=document.documentElement.innerHTML;
+function show(name){var src=name==='index.html'?null:P[name];var doc=src?new DOMParser().parseFromString(src,'text/html'):null;var swap=function(){if(doc){document.title=doc.title;document.body.innerHTML=doc.body.innerHTML;[].forEach.call(doc.querySelectorAll('style'),function(s){if(!document.querySelector('style[data-file="'+s.getAttribute('data-file')+'"]')||!s.getAttribute('data-file'))document.head.appendChild(s.cloneNode(true))});[].forEach.call(document.body.querySelectorAll('script'),function(o){var n=document.createElement('script');n.textContent=o.textContent;o.replaceWith(n)})}else{document.documentElement.innerHTML=home}scrollTo(0,0)};if(document.startViewTransition)document.startViewTransition(swap);else swap()}
+document.addEventListener('click',function(e){var a=e.target.closest&&e.target.closest('a[href]');if(!a)return;var h=a.getAttribute('href').split('#')[0];if(h==='index.html'||P[h]){e.preventDefault();show(h)}});})();</script>`;
+  const i = html.toLowerCase().lastIndexOf("</body>");
+  return i < 0 ? html + router : html.slice(0, i) + router + html.slice(i);
+}
+var CRC = (() => {
+  const t = new Uint32Array(256);
+  for (let n = 0; n < 256; n++) {
+    let c = n;
+    for (let k = 0; k < 8; k++) c = c & 1 ? 3988292384 ^ c >>> 1 : c >>> 1;
+    t[n] = c >>> 0;
+  }
+  return t;
+})();
+
 // lib/effect/agent/pipeline.ts
 var FATAL = /* @__PURE__ */ new Set([
   "cancelled",
@@ -853,22 +983,64 @@ async function runPipeline(input) {
       }
     }
     const dev = planOf("developer");
-    const devCtx = { ...base, kind: route2.kind, spec, design, html: route2.intent === "edit" ? project.html : void 0 };
-    const built = await runStep(dev, devCtx, "html");
-    let html = extractHtml(built.text);
-    if (html) html = polish(html);
-    if (!html) {
-      const err = new AgentError("no_html", "\u041C\u043E\u0434\u0435\u043B\u044C \u043D\u0435 \u0432\u0435\u0440\u043D\u0443\u043B\u0430 HTML. \u041F\u043E\u043F\u0440\u043E\u0431\u0443\u0439\u0442\u0435 \u0435\u0449\u0451 \u0440\u0430\u0437 \u0438\u043B\u0438 \u0432\u044B\u0431\u0435\u0440\u0438\u0442\u0435 \u0434\u0440\u0443\u0433\u0443\u044E \u043C\u043E\u0434\u0435\u043B\u044C.");
-      emit({ type: "step", id: dev.id, status: "error", message: err.message });
-      throw err;
+    let files = project?.files ?? null;
+    const sourceOf = () => files ?? { "index.html": stripMotionKit(project?.html ?? "") };
+    const kb = (h) => Math.max(1, Math.round(h.length / 1024)) + " \u041A\u0411";
+    const tryPatch = async (plan, ctx, id) => {
+      const src = sourceOf();
+      const r = await runStep({ ...plan, id }, { ...ctx, patch: true, files: src, html: void 0 }, "text", id);
+      if (!hasPatches(r.text)) {
+        const whole = extractHtml(r.text);
+        if (whole && isComplete(whole)) {
+          emit({ type: "step", id, status: "done", ms: r.ms, summary: "\u041F\u0435\u0440\u0435\u043F\u0438\u0441\u0430\u043D \u0446\u0435\u043B\u0438\u043A\u043E\u043C \xB7 " + kb(whole) });
+          return { "index.html": whole };
+        }
+        emit({ type: "step", id, status: "done", ms: r.ms, summary: "\u0422\u043E\u0447\u0435\u0447\u043D\u0430\u044F \u043F\u0440\u0430\u0432\u043A\u0430 \u043D\u0435 \u043F\u043E\u043B\u0443\u0447\u0438\u043B\u0430\u0441\u044C \u2014 \u043F\u0435\u0440\u0435\u043F\u0438\u0441\u044B\u0432\u0430\u044E \u0446\u0435\u043B\u0438\u043A\u043E\u043C" });
+        return null;
+      }
+      const res = applyPatches(src, parsePatches(r.text));
+      if (!res.ok) {
+        emit({ type: "step", id, status: "done", ms: r.ms, summary: `\u0411\u043B\u043E\u043A \u043D\u0435 \u0441\u043E\u0432\u043F\u0430\u043B \u0441 \u043A\u043E\u0434\u043E\u043C (${res.failed.length}) \u2014 \u043F\u0435\u0440\u0435\u043F\u0438\u0441\u044B\u0432\u0430\u044E \u0446\u0435\u043B\u0438\u043A\u043E\u043C`, output: res.failed.map((f) => "\u2022 " + f.reason + ": " + f.patch.search.slice(0, 120)).join("\n") });
+        return null;
+      }
+      emit({ type: "step", id, status: "done", ms: r.ms, summary: "\u0422\u043E\u0447\u0435\u0447\u043D\u0430\u044F \u043F\u0440\u0430\u0432\u043A\u0430 \xB7 " + plural(res.applied, "\u0431\u043B\u043E\u043A", "\u0431\u043B\u043E\u043A\u0430", "\u0431\u043B\u043E\u043A\u043E\u0432"), output: r.text.slice(0, 6e3) });
+      return res.files;
+    };
+    const usePatch = route2.intent === "edit" && sourceOf()["index.html"].length + Object.keys(files ?? {}).length > 0 && JSON.stringify(sourceOf()).length > 6e3;
+    let html = null;
+    if (usePatch) {
+      const patched = await tryPatch(dev, { ...base, kind: route2.kind, spec, design }, dev.id);
+      if (patched) {
+        files = Object.keys(patched).length > 1 ? patched : null;
+        html = polish(bundle(patched));
+      }
     }
-    emit({
-      type: "step",
-      id: dev.id,
-      status: "done",
-      ms: built.ms,
-      summary: Math.max(1, Math.round(html.length / 1024)) + " \u041A\u0411 \u043A\u043E\u0434\u0430" + (built.continued ? " \xB7 \u043F\u0440\u043E\u0434\u043E\u043B\u0436\u0435\u043D\u043E " + plural(built.continued, "\u0440\u0430\u0437", "\u0440\u0430\u0437\u0430", "\u0440\u0430\u0437") : "") + (isComplete(html) ? "" : " \xB7 \u043D\u0435 \u0437\u0430\u0432\u0435\u0440\u0448\u0451\u043D")
-    });
+    if (!html) {
+      const id = usePatch ? "developer-full" : dev.id;
+      const devCtx = { ...base, kind: route2.kind, spec, design, html: route2.intent === "edit" ? bundle(sourceOf()) : void 0 };
+      const built = await runStep({ ...dev, id, title: usePatch ? "\u0420\u0430\u0437\u0440\u0430\u0431\u043E\u0442\u0447\u0438\u043A \xB7 \u0446\u0435\u043B\u0438\u043A\u043E\u043C" : dev.title }, devCtx, "html", id);
+      const multi = parseFiles(built.text);
+      if (multi["index.html"]) {
+        files = Object.keys(multi).length > 1 ? multi : null;
+        html = polish(bundle(multi));
+      } else {
+        const one = extractHtml(built.text);
+        html = one ? polish(one) : null;
+        if (one) files = null;
+      }
+      if (!html) {
+        const err = new AgentError("no_html", "\u041C\u043E\u0434\u0435\u043B\u044C \u043D\u0435 \u0432\u0435\u0440\u043D\u0443\u043B\u0430 HTML. \u041F\u043E\u043F\u0440\u043E\u0431\u0443\u0439\u0442\u0435 \u0435\u0449\u0451 \u0440\u0430\u0437 \u0438\u043B\u0438 \u0432\u044B\u0431\u0435\u0440\u0438\u0442\u0435 \u0434\u0440\u0443\u0433\u0443\u044E \u043C\u043E\u0434\u0435\u043B\u044C.");
+        emit({ type: "step", id, status: "error", message: err.message });
+        throw err;
+      }
+      emit({
+        type: "step",
+        id,
+        status: "done",
+        ms: built.ms,
+        summary: kb(html) + " \u043A\u043E\u0434\u0430" + (files ? " \xB7 \u0444\u0430\u0439\u043B\u043E\u0432: " + Object.keys(files).length : "") + (built.continued ? " \xB7 \u043F\u0440\u043E\u0434\u043E\u043B\u0436\u0435\u043D\u043E " + plural(built.continued, "\u0440\u0430\u0437", "\u0440\u0430\u0437\u0430", "\u0440\u0430\u0437") : "") + (isComplete(html) ? "" : " \xB7 \u043D\u0435 \u0437\u0430\u0432\u0435\u0440\u0448\u0451\u043D")
+      });
+    }
     emit({ type: "html", html, final: false });
     let report = null;
     let runtime = [];
@@ -906,13 +1078,29 @@ async function runPipeline(input) {
     const fix = async (rep, id, label) => {
       round++;
       const plan = { ...dev, id, title: label };
-      const r = await runStep(plan, { ...base, kind: route2.kind, spec, design, html, report: rep, round, intent: route2.intent }, "html", id);
-      const next = extractHtml(r.text);
+      const ctx = { ...base, kind: route2.kind, spec, design, report: rep, round, intent: route2.intent };
+      if (JSON.stringify(sourceOf()).length > 6e3) {
+        const patched = await tryPatch(plan, ctx, id);
+        if (patched) {
+          files = Object.keys(patched).length > 1 ? patched : null;
+          html = polish(bundle(patched));
+          runtime = await diagnose();
+          checks = [...staticChecks(html, route2.kind, input.syntax ?? null), ...runtime];
+          emit({ type: "html", html, final: false });
+          return;
+        }
+        id = id + "-full";
+      }
+      const r = await runStep({ ...plan, id }, { ...ctx, html }, "html", id);
+      const multi = parseFiles(r.text);
+      const next = multi["index.html"] ? bundle(multi) : extractHtml(r.text);
       if (next && (isComplete(next) || !isComplete(html))) {
+        if (multi["index.html"]) files = Object.keys(multi).length > 1 ? multi : null;
+        else files = null;
         html = polish(next);
         runtime = await diagnose();
         checks = [...staticChecks(html, route2.kind, input.syntax ?? null), ...runtime];
-        emit({ type: "step", id, status: "done", ms: r.ms, summary: "\u0418\u0441\u043F\u0440\u0430\u0432\u043B\u0435\u043D\u043E \xB7 " + Math.max(1, Math.round(html.length / 1024)) + " \u041A\u0411" });
+        emit({ type: "step", id, status: "done", ms: r.ms, summary: "\u0418\u0441\u043F\u0440\u0430\u0432\u043B\u0435\u043D\u043E \xB7 " + kb(html) });
         emit({ type: "html", html, final: false });
       } else {
         emit({ type: "step", id, status: "done", ms: r.ms, summary: "\u0418\u0441\u043F\u0440\u0430\u0432\u043B\u0435\u043D\u0438\u0435 \u043D\u0435 \u0437\u0430\u0432\u0435\u0440\u0448\u0438\u043B\u043E\u0441\u044C \u2014 \u043E\u0441\u0442\u0430\u0432\u0438\u043B \u043F\u0440\u043E\u0448\u043B\u0443\u044E \u0432\u0435\u0440\u0441\u0438\u044E" });
@@ -948,7 +1136,7 @@ async function runPipeline(input) {
     const name = spec?.name && String(spec.name).slice(0, 60) || titleOf(html) || project?.name || input.request.slice(0, 40);
     const reply = replyFor(route2.intent, route2.kind, name, spec, report);
     emit({ type: "html", html, final: true });
-    const done = { type: "done", intent: route2.intent, kind: route2.kind, html, reply, name, spec, design, report, usage };
+    const done = { type: "done", intent: route2.intent, kind: route2.kind, html, reply, name, spec, design, report, usage, files: files ?? void 0 };
     emit(done);
     return done;
   } catch (e) {

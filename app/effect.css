@@ -2349,3 +2349,38 @@ html.fxs-root body {
   background: transparent;
   box-shadow: inset 0 0 0 1px var(--line2);
 }
+
+/* Multi-file projects */
+.fxs-files {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+.fxs-file-tabs {
+  display: flex;
+  gap: 2px;
+  padding: 6px 10px 0;
+  border-bottom: 1px solid var(--line);
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.fxs-file-tabs button {
+  height: 32px;
+  padding: 0 12px;
+  border: 0;
+  border-bottom: 1px solid transparent;
+  background: none;
+  color: var(--mist);
+  font-family: var(--mono);
+  font-size: 12.5px;
+  white-space: nowrap;
+  transition: color var(--fast), border-color var(--fast);
+}
+.fxs-file-tabs button:hover {
+  color: var(--snow);
+}
+.fxs-file-tabs button[aria-pressed='true'] {
+  color: var(--snow);
+  border-bottom-color: var(--gold);
+}

@@ -65,6 +65,8 @@ export type Project = {
   updated: number;
   /** Effect Brain: brief, tokens and decisions every agent reads. */
   memory?: Memory | null;
+  /** Source files when the project has more than index.html (html is their bundle). */
+  files?: Record<string, string> | null;
 };
 
 export const VERSION_LIMIT = 30;
@@ -277,6 +279,7 @@ export function projectInput(p: Project | null): ProjectInput | null {
     spec: p.spec ?? null,
     design: p.design ?? null,
     memory: memoryText(p.memory) || undefined,
+    files: p.files ?? undefined,
     history: p.messages
       .filter((m) => !m.error && m.text)
       .slice(-6)

@@ -139,6 +139,10 @@ export type StepContext = {
   round?: number;
   /** Project memory (Effect Brain) rendered as text. */
   memory?: string;
+  /** Source files of a multi-file project (index.html included). */
+  files?: Record<string, string>;
+  /** Ask for SEARCH/REPLACE blocks instead of the whole document. */
+  patch?: boolean;
 };
 
 export type StepStatus = 'pending' | 'running' | 'done' | 'skipped' | 'error';
@@ -163,6 +167,8 @@ export type AgentEvent =
       design?: Design | null;
       report?: Report | null;
       usage?: Usage;
+      /** Source files of a multi-file project. */
+      files?: Record<string, string>;
     }
   | { type: 'error'; code: string; message: string };
 
@@ -176,4 +182,6 @@ export type ProjectInput = {
   history?: { role: 'user' | 'assistant'; text: string }[];
   /** Project memory rendered as text. */
   memory?: string;
+  /** Source files when the project has more than index.html. */
+  files?: Record<string, string>;
 };

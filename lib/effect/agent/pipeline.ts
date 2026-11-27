@@ -10,7 +10,9 @@ import { extractHtml, failedChecks, isComplete, parseJson, staticChecks, stitch,
 import { KIND_LABELS, isKind } from './models.ts';
 import { classify, route as makeRoute, stepTitle } from './router.ts';
 import { auditChecks, auditOutput, auditSummary, type AuditReport } from '../audit.ts';
-import { withMotionKit } from '../motion-kit.ts';
+import { stripMotionKit, withMotionKit } from '../motion-kit.ts';
+import { applyPatches, hasPatches, parsePatches } from '../patch.ts';
+import { bundle, parseFiles, type Files } from '../vfs.ts';
 import {
   AgentError,
   type AgentEvent,
@@ -289,24 +291,69 @@ export async function runPipeline(input: PipelineInput): Promise<DoneEvent | nul
       }
     }
 
-    // 4. Developer.
+    // 4. Developer. Large edits are targeted SEARCH/REPLACE patches; a full rewrite is the fallback.
     const dev = planOf('developer')!;
-    const devCtx: StepContext = { ...base, kind: route.kind, spec, design, html: route.intent === 'edit' ? project!.html : undefined };
-    const built = await runStep(dev, devCtx, 'html');
-    let html = extractHtml(built.text);
-    if (html) html = polish(html);
-    if (!html) {
-      const err = new AgentError('no_html', 'Модель не вернула HTML. Попробуйте ещё раз или выберите другую модель.');
-      emit({ type: 'step', id: dev.id, status: 'error', message: err.message });
-      throw err;
+    let files: Files | null = project?.files ?? null;
+    const sourceOf = (): Files => files ?? { 'index.html': stripMotionKit(project?.html ?? '') };
+    const kb = (h: string) => Math.max(1, Math.round(h.length / 1024)) + ' КБ';
+    /** Tries a patch; returns the new source files or null (the caller rewrites instead). */
+    const tryPatch = async (plan: StepPlan, ctx: StepContext, id: string) => {
+      const src = sourceOf();
+      const r = await runStep({ ...plan, id }, { ...ctx, patch: true, files: src, html: undefined }, 'text', id);
+      if (!hasPatches(r.text)) {
+        // Some models answer with the whole document anyway: accept it when it is complete.
+        const whole = extractHtml(r.text);
+        if (whole && isComplete(whole)) {
+          emit({ type: 'step', id, status: 'done', ms: r.ms, summary: 'Переписан целиком · ' + kb(whole) });
+          return { 'index.html': whole } as Files;
+        }
+        emit({ type: 'step', id, status: 'done', ms: r.ms, summary: 'Точечная правка не получилась — переписываю целиком' });
+        return null;
+      }
+      const res = applyPatches(src, parsePatches(r.text));
+      if (!res.ok) {
+        emit({ type: 'step', id, status: 'done', ms: r.ms, summary: `Блок не совпал с кодом (${res.failed.length}) — переписываю целиком`, output: res.failed.map((f) => '• ' + f.reason + ': ' + f.patch.search.slice(0, 120)).join('\n') });
+        return null;
+      }
+      emit({ type: 'step', id, status: 'done', ms: r.ms, summary: 'Точечная правка · ' + plural(res.applied, 'блок', 'блока', 'блоков'), output: r.text.slice(0, 6000) });
+      return res.files;
+    };
+    const usePatch = route.intent === 'edit' && sourceOf()['index.html'].length + Object.keys(files ?? {}).length > 0 && JSON.stringify(sourceOf()).length > 6000;
+    let html: string | null = null;
+    if (usePatch) {
+      const patched = await tryPatch(dev, { ...base, kind: route.kind, spec, design }, dev.id);
+      if (patched) {
+        files = Object.keys(patched).length > 1 ? patched : null;
+        html = polish(bundle(patched));
+      }
     }
-    emit({
-      type: 'step',
-      id: dev.id,
-      status: 'done',
-      ms: built.ms,
-      summary: Math.max(1, Math.round(html.length / 1024)) + ' КБ кода' + (built.continued ? ' · продолжено ' + plural(built.continued, 'раз', 'раза', 'раз') : '') + (isComplete(html) ? '' : ' · не завершён'),
-    });
+    if (!html) {
+      const id = usePatch ? 'developer-full' : dev.id;
+      const devCtx: StepContext = { ...base, kind: route.kind, spec, design, html: route.intent === 'edit' ? bundle(sourceOf()) : undefined };
+      const built = await runStep({ ...dev, id, title: usePatch ? 'Разработчик · целиком' : dev.title }, devCtx, 'html', id);
+      const multi = parseFiles(built.text);
+      if (multi['index.html']) {
+        files = Object.keys(multi).length > 1 ? multi : null;
+        html = polish(bundle(multi));
+      } else {
+        const one = extractHtml(built.text);
+        html = one ? polish(one) : null;
+        if (one) files = null;
+      }
+      if (!html) {
+        const err = new AgentError('no_html', 'Модель не вернула HTML. Попробуйте ещё раз или выберите другую модель.');
+        emit({ type: 'step', id, status: 'error', message: err.message });
+        throw err;
+      }
+      emit({
+        type: 'step',
+        id,
+        status: 'done',
+        ms: built.ms,
+        summary:
+          kb(html) + ' кода' + (files ? ' · файлов: ' + Object.keys(files).length : '') + (built.continued ? ' · продолжено ' + plural(built.continued, 'раз', 'раза', 'раз') : '') + (isComplete(html) ? '' : ' · не завершён'),
+      });
+    }
     emit({ type: 'html', html, final: false });
 
     // 5. Runtime diagnostics → tester → fix rounds.
@@ -346,13 +393,29 @@ export async function runPipeline(input: PipelineInput): Promise<DoneEvent | nul
     const fix = async (rep: Report, id: string, label: string) => {
       round++;
       const plan: StepPlan = { ...dev, id, title: label };
-      const r = await runStep(plan, { ...base, kind: route.kind, spec, design, html: html!, report: rep, round, intent: route.intent }, 'html', id);
-      const next = extractHtml(r.text);
+      const ctx: StepContext = { ...base, kind: route.kind, spec, design, report: rep, round, intent: route.intent };
+      if (JSON.stringify(sourceOf()).length > 6000) {
+        const patched = await tryPatch(plan, ctx, id);
+        if (patched) {
+          files = Object.keys(patched).length > 1 ? patched : null;
+          html = polish(bundle(patched));
+          runtime = await diagnose();
+          checks = [...staticChecks(html, route.kind, input.syntax ?? null), ...runtime];
+          emit({ type: 'html', html, final: false });
+          return;
+        }
+        id = id + '-full';
+      }
+      const r = await runStep({ ...plan, id }, { ...ctx, html: html! }, 'html', id);
+      const multi = parseFiles(r.text);
+      const next = multi['index.html'] ? bundle(multi) : extractHtml(r.text);
       if (next && (isComplete(next) || !isComplete(html!))) {
+        if (multi['index.html']) files = Object.keys(multi).length > 1 ? multi : null;
+        else files = null;
         html = polish(next);
         runtime = await diagnose();
         checks = [...staticChecks(html, route.kind, input.syntax ?? null), ...runtime];
-        emit({ type: 'step', id, status: 'done', ms: r.ms, summary: 'Исправлено · ' + Math.max(1, Math.round(html.length / 1024)) + ' КБ' });
+        emit({ type: 'step', id, status: 'done', ms: r.ms, summary: 'Исправлено · ' + kb(html) });
         emit({ type: 'html', html, final: false });
       } else {
         emit({ type: 'step', id, status: 'done', ms: r.ms, summary: 'Исправление не завершилось — оставил прошлую версию' });
@@ -393,7 +456,7 @@ export async function runPipeline(input: PipelineInput): Promise<DoneEvent | nul
     const name = (spec?.name && String(spec.name).slice(0, 60)) || titleOf(html) || project?.name || input.request.slice(0, 40);
     const reply = replyFor(route.intent, route.kind, name, spec, report);
     emit({ type: 'html', html, final: true });
-    const done: DoneEvent = { type: 'done', intent: route.intent, kind: route.kind, html, reply, name, spec, design, report, usage };
+    const done: DoneEvent = { type: 'done', intent: route.intent, kind: route.kind, html, reply, name, spec, design, report, usage, files: files ?? undefined };
     emit(done);
     return done;
   } catch (e) {

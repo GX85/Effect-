@@ -48,6 +48,7 @@ export const KIND_GUIDES: Record<Kind, string> = {
 
 const OUTPUT_RULES = `Output rules:
 - Reply with the HTML document only: start with <!doctype html> and end with </html>. No Markdown fences, no commentary before or after.
+- Exception for big multi-page websites (4+ pages): you may reply with several files instead, each wrapped as <file path="index.html">…</file>, then other pages (about.html, …), styles.css and app.js. Link them normally (<link rel="stylesheet" href="styles.css">, <a href="about.html">); Effect bundles them for preview and export.
 - Everything lives in that one file: inline <style> and <script>. External resources allowed ONLY: Google Fonts (fonts.googleapis.com / fonts.gstatic.com) and libraries from https://cdnjs.cloudflare.com with an exact version. No external images, video or fetch calls: build visuals with CSS, SVG, canvas or WebGL.
 - Include <meta name="viewport" content="width=device-width,initial-scale=1">, <html lang> matching the copy language and a meaningful <title>.
 - All visible copy in the language of the person's request (Russian if they write Russian). Specific, believable copy; never lorem ipsum, never "Coming soon" placeholders for requested features.
@@ -171,6 +172,19 @@ export function buildMessages(role: Role, ctx: StepContext): Msg[] {
         { role: 'user', content: `Project type: ${kind}.${spec}\n\nRequest:\n${req}` },
       ];
     case 'developer': {
+      if (ctx.patch) {
+        const files = ctx.files ?? { 'index.html': ctx.html ?? '' };
+        const listing = Object.entries(files)
+          .map(([p, c]) => `<file path="${p}">\n${trimHtml(c, 120_000)}\n</file>`)
+          .join('\n\n');
+        const task = ctx.report
+          ? `Fix these problems (critical and major first):\n${reportText(ctx.report)}\n\nOriginal request, for reference:\n${req}`
+          : `Apply this change:\n${req}`;
+        return [
+          { role: 'system', content: DEVELOPER + '\n\n' + PATCH_RULES },
+          { role: 'user', content: `Project files:\n\n${listing}${spec}${design}${memoryBlock(ctx)}${hist}\n\n${task}` },
+        ];
+      }
       if (ctx.intent === 'edit' && !ctx.report) {
         return [
           { role: 'system', content: DEVELOPER },
@@ -222,6 +236,15 @@ export function buildMessages(role: Role, ctx: StepContext): Msg[] {
       ];
   }
 }
+
+/** How targeted edits are written. */
+export const PATCH_RULES = `This is a TARGETED EDIT. Do not return the whole document. Reply with one or more SEARCH/REPLACE blocks and nothing else:
+<<<<<<< SEARCH path=index.html
+exact lines copied from the current file (enough to be unique)
+=======
+the new lines
+>>>>>>> REPLACE
+Rules: SEARCH must match the current file exactly, character for character, and occur once. Keep blocks small; use several blocks for several places. To create a new file use an empty SEARCH with its path. Change only what the request needs.`;
 
 /** Continuation prompt after a truncated answer. */
 export const CONTINUE =

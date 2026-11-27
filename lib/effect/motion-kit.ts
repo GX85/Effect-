@@ -65,7 +65,7 @@ export const MOTION_DOC = `Effect Motion Kit is injected into every page automat
 - Set --fx-accent and --fx-bg in :root so the brief intro loader and focus rings match the brand.
 - Your own motion must animate only transform and opacity, and respect prefers-reduced-motion.`;
 
-const strip = (html: string) =>
+export const stripMotionKit = (html: string) =>
   html
     .replace(/<style id="fx-motion-css">[\s\S]*?<\/style>/g, '')
     .replace(/<script id="fx-motion">[\s\S]*?<\/script>/g, '')
@@ -73,7 +73,7 @@ const strip = (html: string) =>
 
 /** Injects (or refreshes) the kit: CSS at the end of <head>, intro after <body>, JS before </body>. */
 export function withMotionKit(html: string, opts: { intro?: boolean } = {}): string {
-  let out = strip(html);
+  let out = stripMotionKit(html);
   const headEnd = out.search(/<\/head>/i);
   out = headEnd >= 0 ? out.slice(0, headEnd) + MOTION_CSS + out.slice(headEnd) : MOTION_CSS + out;
   if (opts.intro !== false) {

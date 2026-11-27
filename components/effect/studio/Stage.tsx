@@ -142,7 +142,7 @@ function Building({ run }: { run?: RunView }) {
   );
 }
 
-function CodeView({ html, onApply, busy }: { html: string; onApply: (html: string) => void; busy: boolean }) {
+function CodeView({ html, onApply, busy, label = 'index.html' }: { html: string; onApply: (html: string) => void; busy: boolean; label?: string }) {
   const [editing, setEditing] = useState(false);
   const [text, setText] = useState(html);
   const highlighted = useMemo(() => (editing ? '' : highlightHtml(html)), [html, editing]);
@@ -151,7 +151,7 @@ function CodeView({ html, onApply, busy }: { html: string; onApply: (html: strin
     <div className="fxs-code">
       <div className="fxs-code-bar">
         <span>
-          index.html · {Math.max(1, Math.round(html.length / 1024))} КБ · {lines} строк
+          {label} · {Math.max(1, Math.round(html.length / 1024))} КБ · {lines} строк
         </span>
         {editing ? (
           <>
@@ -190,6 +190,25 @@ function CodeView({ html, onApply, busy }: { html: string; onApply: (html: strin
           <code dangerouslySetInnerHTML={{ __html: highlighted }} />
         </pre>
       )}
+    </div>
+  );
+}
+
+/** Multi-file projects: a file list and the selected file's code. */
+function FilesView({ files, busy, onApply }: { files: Record<string, string>; busy: boolean; onApply: (path: string, content: string) => void }) {
+  const names = Object.keys(files).sort((a, b) => (a === 'index.html' ? -1 : b === 'index.html' ? 1 : a.localeCompare(b)));
+  const [sel, setSel] = useState(names[0]);
+  const path = files[sel] != null ? sel : names[0];
+  return (
+    <div className="fxs-files">
+      <nav className="fxs-file-tabs" aria-label="Файлы проекта">
+        {names.map((n) => (
+          <button key={n} type="button" aria-pressed={n === path} onClick={() => setSel(n)}>
+            {n}
+          </button>
+        ))}
+      </nav>
+      <CodeView key={path + ':' + files[path].length} html={files[path]} busy={busy} onApply={(c) => onApply(path, c)} label={path} />
     </div>
   );
 }
@@ -297,6 +316,7 @@ export default function Stage(props: {
   onEdit: (html: string, source: 'text' | 'code') => void;
   onRestore: (id: string) => void;
   onMemory: (m: Memory) => void;
+  onEditFile: (path: string, content: string) => void;
   onDownload: () => void;
   onCopy: () => void;
   flash: (t: string, tone?: 'ok' | 'err') => void;
@@ -438,7 +458,10 @@ export default function Stage(props: {
             )}
           </div>
         )}
-        {view === 'code' && (has ? <CodeView key={project.id + ':' + html.length} html={html} busy={props.running} onApply={(h) => props.onEdit(h, 'code')} /> : <EmptyState icon="code" title="Кода пока нет" text="Код появится, как только разработчик начнёт писать проект." />)}
+        {view === 'code' && has && project.files && Object.keys(project.files).length > 1 && (
+          <FilesView files={project.files} busy={props.running} onApply={props.onEditFile} />
+        )}
+        {view === 'code' && (project.files && Object.keys(project.files).length > 1 ? null : has ? <CodeView key={project.id + ':' + html.length} html={html} busy={props.running} onApply={(h) => props.onEdit(h, 'code')} /> : <EmptyState icon="code" title="Кода пока нет" text="Код появится, как только разработчик начнёт писать проект." />)}
         {view === 'memory' && <MemoryPanel memory={project.memory} onChange={props.onMemory} />}
         {view === 'versions' && (
           <div className={'fxs-vwrap' + (cmp ? ' comparing' : '')}>

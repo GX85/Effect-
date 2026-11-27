@@ -8,6 +8,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { flushSync } from 'react-dom';
 import { runPipeline } from '@/lib/effect/agent/pipeline';
 import { updateMemory, type Memory } from '@/lib/effect/brain';
+import { bundle, zip } from '@/lib/effect/vfs';
+import { withMotionKit } from '@/lib/effect/motion-kit';
 import { makeDiagnose } from './diagnose';
 import { isEffort, modelName, parseModel } from '@/lib/effect/agent/models';
 import type { AgentEvent, EffortId } from '@/lib/effect/agent/types';
@@ -266,6 +268,7 @@ export default function Studio({ engine, onExit, initialPrompt, siteUrl, prismUr
             let next: Project = {
               ...p,
               memory: updateMemory(p.memory, { intent: e.intent, request: text, spec: e.spec, design: e.design }, at),
+              files: e.html ? (e.files ?? null) : p.files,
               messages: p.messages.map((m) => (m.id === reply.id ? { ...m, text: e.reply, at, run: m.run ? applyEvent(m.run, e, at) : m.run } : m)),
               updated: at,
             };
@@ -412,8 +415,30 @@ export default function Studio({ engine, onExit, initialPrompt, siteUrl, prismUr
     [current, patch],
   );
 
+  const editFile = useCallback(
+    (path: string, content: string) => {
+      if (!current?.files) return;
+      patch(current.id, (p) => {
+        const files = { ...p.files, [path]: content };
+        return { ...amendHtml(p, withMotionKit(bundle(files), { intro: p.kind !== 'game' }), 'code'), files };
+      });
+    },
+    [current, patch],
+  );
+
   const download = useCallback(async () => {
     if (!current?.html) return;
+    // A multi-file project downloads as a ZIP on the site; the artifact saves the bundled page.
+    if (current.files && Object.keys(current.files).length > 1 && !engine.save) {
+      const url = URL.createObjectURL(new Blob([zip(current.files) as BlobPart], { type: 'application/zip' }));
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = fileName(current.name, 'zip');
+      a.click();
+      window.setTimeout(() => URL.revokeObjectURL(url), 2000);
+      flash('Скачиваю ZIP: файлов ' + Object.keys(current.files).length);
+      return;
+    }
     const name = fileName(current.name);
     if (engine.save) {
       const r = await engine.save(name, current.html);
@@ -575,6 +600,7 @@ export default function Studio({ engine, onExit, initialPrompt, siteUrl, prismUr
             onEdit={editHtml}
             onRestore={restore}
             onMemory={setMemory}
+            onEditFile={editFile}
             onDownload={download}
             onCopy={copy}
             flash={flash}
