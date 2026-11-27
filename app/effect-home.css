@@ -13,7 +13,7 @@ html.fxh-root {
   --line: rgba(255, 255, 255, 0.09);
   --snow: #f5f5f7;
   --mist: #a1a1a6;
-  --haze: #6e6e73;
+  --haze: #8e8e93;
   --spectrum: linear-gradient(95deg, #ff375f, #ff9f0a 22%, #ffd60a 38%, #30d158 52%, #64d2ff 66%, #5e5ce6 82%, #bf5af2);
   --accent: #64d2ff;
   /* Radii: 12 / 20 / 28 / pill. */
@@ -1437,7 +1437,7 @@ html.fxh-root {
   color: #64d2ff;
 }
 .fxh-scene.code .c {
-  color: #6e6e73;
+  color: #8e8e93;
 }
 /* Projects at hand */
 .fxh-scene.projects {
