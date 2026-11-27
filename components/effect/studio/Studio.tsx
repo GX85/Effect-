@@ -35,7 +35,10 @@ import {
 import type { CatalogModel, Engine, EngineStatus } from './engine';
 import type { Picked } from '@/lib/effect/inspector';
 import { About, Composer, Conversation, EmptyStart, Sidebar } from './parts';
-import Stage, { type Device, type View } from './Stage';
+import Stage, { SANDBOX, type Device, type View } from './Stage';
+import { Palette, type Command } from './Palette';
+import { decodeShare, encodeShare, SHARE_PREFIX, type Shared } from '@/lib/effect/share';
+import { EFFORTS, KIND_LABELS, MODELS } from '@/lib/effect/agent/models';
 import { EffectLogo, Icon } from '../ui';
 
 type Running = { projectId: string; messageId: string; ctl: AbortController };
@@ -98,6 +101,8 @@ export default function Studio({ engine, onExit, initialPrompt, siteUrl, prismUr
   const [toasts, setToasts] = useState<Toast[]>([]);
   const [ready, setReady] = useState(false);
   const [queued, setQueued] = useState<string | null>(null);
+  const [palette, setPalette] = useState<Command[] | null>(null);
+  const [shared, setShared] = useState<Shared | null>(null);
   const consumedPrompt = useRef<string | undefined>(undefined);
   const lastSend = useRef<{ text: string; at: number } | null>(null);
   const runRef = useRef<Running | null>(null);
@@ -138,6 +143,9 @@ export default function Studio({ engine, onExit, initialPrompt, siteUrl, prismUr
       setReady(true);
     }, 0);
     let alive = true;
+    // A read-only share link (site only).
+    if (engine.surface === 'site' && window.location.hash.startsWith(SHARE_PREFIX))
+      void decodeShare(window.location.hash).then((sh) => alive && (sh ? setShared(sh) : flash('Ссылка повреждена или неполная', 'err')));
     void engine.status().then((s) => {
       if (!alive) return;
       setStatus(s);
@@ -147,7 +155,7 @@ export default function Studio({ engine, onExit, initialPrompt, siteUrl, prismUr
       alive = false;
       window.clearTimeout(timer);
     };
-  }, [engine]);
+  }, [engine, flash]);
 
   // Persist (debounced) and on page hide.
   useEffect(() => {
@@ -485,6 +493,85 @@ export default function Studio({ engine, onExit, initialPrompt, siteUrl, prismUr
     restore(prev.id);
   }, [current, restore, flash]);
 
+  // ───────────── Share (site) ─────────────
+  const share = useCallback(async () => {
+    if (!current?.html) return;
+    const hash = await encodeShare({ name: current.name, kind: current.kind, html: current.html });
+    if (!hash) return flash('Проект слишком большой для ссылки — скачайте файл', 'err');
+    const url = window.location.origin + window.location.pathname + hash;
+    try {
+      await navigator.clipboard.writeText(url);
+      flash('Ссылка для просмотра скопирована');
+    } catch {
+      window.prompt('Ссылка для просмотра', url);
+    }
+  }, [current, flash]);
+
+  const closeShared = useCallback(() => {
+    setShared(null);
+    history.replaceState(null, '', window.location.pathname + window.location.search);
+  }, []);
+
+  const openShared = useCallback(() => {
+    if (!shared) return;
+    const p = commitHtml({ ...newProject(), name: shared.name, kind: shared.kind }, shared.html, 'Открыто по ссылке', 'import');
+    setProjects((list) => [p, ...list]);
+    closeShared();
+    select(p.id);
+    flash('Копия добавлена в ваши проекты');
+  }, [shared, closeShared, select, flash]);
+
+  // ───────────── ⌘K ─────────────
+  // Built when the palette opens (it calls actions that read refs, so never during render).
+  const buildCommands = (): Command[] => {
+    const go = (v: View) => () => {
+      transition(() => setView(v));
+      setPane('stage');
+    };
+    const stage = (cmd: string) => () => {
+      transition(() => {
+        setView('preview');
+        setPane('stage');
+      });
+      window.setTimeout(() => window.dispatchEvent(new CustomEvent('effect:stage', { detail: cmd })), 60);
+    };
+    const list: Command[] = [
+      { id: 'new', group: 'Действия', label: 'Новый проект', icon: 'plus', run: createNew },
+    ];
+    if (current?.html) {
+      list.push(
+        { id: 'download', group: 'Действия', label: current.files && Object.keys(current.files).length > 1 && !engine.save ? 'Скачать ZIP' : 'Скачать HTML', icon: 'download', hint: '⌘S', run: () => void download() },
+        { id: 'copy', group: 'Действия', label: 'Копировать HTML', icon: 'copy', run: () => void copy() },
+        { id: 'undo', group: 'Действия', label: 'Отменить последнюю правку', icon: 'undo', hint: '⌘Z', keywords: 'назад версия', run: undo },
+        { id: 'present', group: 'Действия', label: 'Показ на весь экран', icon: 'expand', keywords: 'презентация fullscreen', run: stage('present') },
+        { id: 'inspect', group: 'Действия', label: 'Инспектор элементов', icon: 'cursor', keywords: 'стиль цвет', run: stage('inspect') },
+        { id: 'text', group: 'Действия', label: 'Править текст в превью', icon: 'text', run: stage('text') },
+        { id: 'dup', group: 'Действия', label: 'Дублировать проект', icon: 'duplicate', run: () => duplicate(current.id) },
+      );
+      if (engine.surface === 'site') list.push({ id: 'share', group: 'Действия', label: 'Ссылка только для просмотра', icon: 'link', keywords: 'поделиться share', run: () => void share() });
+      list.push(
+        { id: 'v-preview', group: 'Вид', label: 'Превью', icon: 'eye', run: go('preview') },
+        { id: 'v-code', group: 'Вид', label: 'Код', icon: 'code', run: go('code') },
+        { id: 'v-versions', group: 'Вид', label: 'Версии', icon: 'history', run: go('versions') },
+        { id: 'v-memory', group: 'Вид', label: 'Память проекта', icon: 'layers', run: go('memory') },
+        { id: 'd-desktop', group: 'Устройство', label: 'Компьютер', icon: 'desktop', run: () => (setDevice('desktop'), go('preview')()) },
+        { id: 'd-tablet', group: 'Устройство', label: 'Планшет', icon: 'tablet', run: () => (setDevice('tablet'), go('preview')()) },
+        { id: 'd-phone', group: 'Устройство', label: 'Телефон', icon: 'phone', run: () => (setDevice('phone'), go('preview')()) },
+      );
+    }
+    list.push(
+      { id: 'm-auto', group: 'Модель', label: 'Авто', icon: 'cpu', keywords: 'модель', run: () => setModel('auto') },
+      ...MODELS.map((m): Command => ({ id: 'm-' + m.id, group: 'Модель', label: m.name, icon: 'cpu', keywords: 'модель ' + m.tag, run: () => setModel(m.id) })),
+      ...EFFORTS.map((e): Command => ({ id: 'e-' + e.id, group: 'Глубина', label: e.name, icon: 'bolt', keywords: 'глубина ' + e.hint, run: () => setEffort(e.id) })),
+      ...projects.map((p): Command => ({ id: 'p-' + p.id, group: 'Проекты', label: p.name, icon: p.kind, keywords: KIND_LABELS[p.kind], run: () => select(p.id) })),
+    );
+    return list;
+  };
+  const build$ = useRef(buildCommands);
+  useEffect(() => {
+    build$.current = buildCommands;
+  });
+
   // Global shortcuts.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -493,8 +580,7 @@ export default function Studio({ engine, onExit, initialPrompt, siteUrl, prismUr
       const typing = !!t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable);
       if (mod && e.key.toLowerCase() === 'k') {
         e.preventDefault();
-        setSidebar(true);
-        window.setTimeout(() => document.getElementById('fxs-search')?.focus(), 30);
+        setPalette((v) => (v ? null : build$.current()));
       } else if (mod && e.key.toLowerCase() === 's') {
         e.preventDefault();
         void download();
@@ -567,6 +653,9 @@ export default function Studio({ engine, onExit, initialPrompt, siteUrl, prismUr
             <i /> {activeRun?.steps.find((s) => s.status === 'running')?.title ?? 'Effect работает'}
           </output>
         )}
+        <button type="button" className="fxs-icon-btn fxs-cmdk" aria-label="Команды (⌘K)" title="Команды (⌘K)" onClick={() => setPalette(build$.current())}>
+          <Icon name="command" size={16} />
+        </button>
         <About prismUrl={prismUrl} />
         <button type="button" className="fxs-btn ghost" onClick={createNew}>
           <Icon name="plus" size={16} /> <span className="fxs-hide-sm">Новый проект</span>
@@ -632,6 +721,7 @@ export default function Studio({ engine, onExit, initialPrompt, siteUrl, prismUr
             }}
             onDownload={download}
             onCopy={copy}
+            onShare={engine.surface === 'site' ? () => void share() : undefined}
             flash={flash}
           />
           <nav className="fxs-tabs" aria-label="Панели">
@@ -648,6 +738,27 @@ export default function Studio({ engine, onExit, initialPrompt, siteUrl, prismUr
             ))}
           </nav>
         </>
+      )}
+
+      {palette && <Palette commands={palette} onClose={() => setPalette(null)} />}
+
+      {shared && (
+        <dialog open className="fxs-shared" aria-label={'Просмотр: ' + shared.name}>
+          <header className="fxs-shared-bar">
+            <EffectLogo size={20} />
+            <b>{shared.name}</b>
+            <span className="fxs-chip">Только просмотр</span>
+            <span className="fxs-bar-sp" />
+            <button type="button" className="fxs-btn sm" onClick={openShared}>
+              <Icon name="duplicate" size={16} /> <span className="fxs-hide-sm">Открыть копию в студии</span>
+              <span className="fx-sr">Открыть копию в студии</span>
+            </button>
+            <button type="button" className="fxs-icon-btn" aria-label="Закрыть просмотр" onClick={closeShared}>
+              <Icon name="close" size={16} />
+            </button>
+          </header>
+          <iframe title="Просмотр проекта" sandbox={SANDBOX} srcDoc={shared.html} />
+        </dialog>
       )}
 
       <div className="fxs-toasts" aria-live="polite">

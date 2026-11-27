@@ -17,7 +17,7 @@ const DEVICES: Record<Device, { w: number; h: number; label: string }> = {
   phone: { w: 390, h: 844, label: 'Телефон' },
 };
 
-const SANDBOX = 'allow-scripts allow-pointer-lock allow-forms';
+export const SANDBOX = 'allow-scripts allow-pointer-lock allow-forms';
 
 /**
  * Two iframes take turns: the next document loads in the hidden one and is shown only once
@@ -274,6 +274,9 @@ function InspectorPanel({ el, onSet, onAsk, onClose }: { el: Picked; onSet: (pro
   );
 }
 
+/** Live miniatures for the newest versions; older ones show their number. */
+const THUMBS = 8;
+
 function Versions({ project, onRestore, onCompare, compare }: { project: Project; onRestore: (id: string) => void; onCompare: (id: string | null) => void; compare: string | null }) {
   const list = [...project.versions].reverse();
   if (!list.length) return <EmptyState icon="history" title="Версий пока нет" text="Каждая генерация и правка сохраняется отдельной версией." />;
@@ -284,7 +287,14 @@ function Versions({ project, onRestore, onCompare, compare }: { project: Project
         const isCurrent = v.html === project.html && i === 0;
         return (
           <li key={v.id} className={(isCurrent ? 'current ' : '') + (compare === v.id ? 'cmp' : '')}>
-            <span className="fxs-vnum">{n}</span>
+            {i < THUMBS ? (
+              <span className="fxs-vthumb" aria-hidden="true">
+                <iframe title="Миниатюра версии" sandbox={SANDBOX} srcDoc={thumbnailHtml(v.html)} loading="lazy" tabIndex={-1} />
+                <em>{n}</em>
+              </span>
+            ) : (
+              <span className="fxs-vnum">{n}</span>
+            )}
             <div>
               <b>{v.label}</b>
               <small>
@@ -305,6 +315,43 @@ function Versions({ project, onRestore, onCompare, compare }: { project: Project
         );
       })}
     </ol>
+  );
+}
+
+/** Before / after on top of each other; drag the line or use the slider (arrow keys work). */
+function CompareSlider({ before, beforeLabel, after }: { before: string; beforeLabel: string; after: string }) {
+  const [pos, setPos] = useState(50);
+  const drag = useRef(false);
+  const at = (e: React.PointerEvent<HTMLDivElement>) => {
+    const r = e.currentTarget.getBoundingClientRect();
+    setPos(Math.round(Math.min(100, Math.max(0, ((e.clientX - r.left) / r.width) * 100))));
+  };
+  return (
+    <div className="fxs-compare" aria-label="Сравнение версий" style={{ '--cut': pos + '%' } as React.CSSProperties}>
+      <div className="fxs-cmp-stage">
+        <iframe className="after" title="Текущая версия" sandbox={SANDBOX} srcDoc={thumbnailHtml(after, 2500)} />
+        <iframe className="before" title="Выбранная версия" sandbox={SANDBOX} srcDoc={thumbnailHtml(before, 2500)} />
+        <div
+          className="fxs-cmp-drag"
+          aria-hidden="true"
+          onPointerDown={(e) => {
+            drag.current = true;
+            e.currentTarget.setPointerCapture(e.pointerId);
+            at(e);
+          }}
+          onPointerMove={(e) => drag.current && at(e)}
+          onPointerUp={() => (drag.current = false)}
+        >
+          <i />
+        </div>
+        <span className="fxs-cmp-tag l">До · {beforeLabel}</span>
+        <span className="fxs-cmp-tag r">Сейчас</span>
+      </div>
+      <label className="fxs-cmp-range">
+        <span className="fx-sr">Граница сравнения</span>
+        <input type="range" min={0} max={100} value={pos} onChange={(e) => setPos(Number(e.target.value))} />
+      </label>
+    </div>
   );
 }
 
@@ -381,6 +428,7 @@ export default function Stage(props: {
   onAsk: (el: Picked) => void;
   onDownload: () => void;
   onCopy: () => void;
+  onShare?: () => void;
   flash: (t: string, tone?: 'ok' | 'err') => void;
 }) {
   const { project, html, view, device } = props;
@@ -445,6 +493,29 @@ export default function Stage(props: {
   }, []);
 
   const has = !!html;
+  const toggleEdit = (m: 'text' | 'inspect') => {
+    if (!has || props.running) return;
+    setPicked(null);
+    if (editing && mode === m) return setBridged(null);
+    setMode(m);
+    setBridged(m === 'text' ? withBridge(html) : withInspector(html));
+    props.flash(m === 'text' ? 'Кликните по тексту в превью и пишите' : 'Выберите элемент в превью');
+  };
+  // Commands from the ⌘K palette.
+  const toggle$ = useRef(toggleEdit);
+  useEffect(() => {
+    toggle$.current = toggleEdit;
+  });
+  useEffect(() => {
+    const on = (e: Event) => {
+      const cmd = (e as CustomEvent<string>).detail;
+      if (cmd === 'fullscreen') void fullscreen();
+      else if (cmd === 'present') setMaxed(true);
+      else if (cmd === 'text' || cmd === 'inspect') toggle$.current(cmd);
+    };
+    window.addEventListener('effect:stage', on);
+    return () => window.removeEventListener('effect:stage', on);
+  }, [fullscreen]);
   return (
     <section className={'fxs-stage' + (maxed ? ' maxed' : '')} ref={stageRef} aria-label="Результат">
       <div className="fxs-stage-bar">
@@ -482,15 +553,7 @@ export default function Stage(props: {
             aria-pressed={editing && mode === 'text'}
             disabled={!has || props.running}
             title="Править текст прямо в превью"
-            onClick={() => {
-              setPicked(null);
-              if (editing && mode === 'text') setBridged(null);
-              else {
-                setMode('text');
-                setBridged(withBridge(html));
-                props.flash('Кликните по тексту в превью и пишите');
-              }
-            }}
+            onClick={() => toggleEdit('text')}
           >
             <Icon name="text" size={16} /> <span className="fxs-hide-md">Текст</span>
           </button>
@@ -502,15 +565,7 @@ export default function Stage(props: {
             aria-pressed={editing && mode === 'inspect'}
             disabled={!has || props.running}
             title="Инспектор: выберите элемент в превью"
-            onClick={() => {
-              setPicked(null);
-              if (editing && mode === 'inspect') setBridged(null);
-              else {
-                setMode('inspect');
-                setBridged(withInspector(html));
-                props.flash('Выберите элемент в превью');
-              }
-            }}
+            onClick={() => toggleEdit('inspect')}
           >
             <Icon name="cursor" size={16} /> <span className="fxs-hide-md">Инспектор</span>
           </button>
@@ -523,6 +578,12 @@ export default function Stage(props: {
           <Icon name="download" size={16} />
           <span className="fx-sr">Скачать HTML</span>
         </button>
+        {props.onShare && (
+          <button type="button" className="fxs-tool" disabled={!has} onClick={props.onShare} title="Ссылка только для просмотра">
+            <Icon name="link" size={16} />
+            <span className="fx-sr">Ссылка только для просмотра</span>
+          </button>
+        )}
         <button type="button" className="fxs-tool" disabled={!has} onClick={fullscreen} title="Во весь экран">
           <Icon name="expand" size={16} />
           <span className="fx-sr">Во весь экран</span>
@@ -562,18 +623,7 @@ export default function Stage(props: {
         {view === 'versions' && (
           <div className={'fxs-vwrap' + (cmp ? ' comparing' : '')}>
             <Versions project={project} onRestore={props.onRestore} onCompare={setCompare} compare={compare} />
-            {cmp && (
-              <div className="fxs-compare" aria-label="Сравнение версий">
-                <figure>
-                  <figcaption>До · {cmp.label}</figcaption>
-                  <iframe title="Выбранная версия" sandbox={SANDBOX} srcDoc={thumbnailHtml(cmp.html, 2500)} />
-                </figure>
-                <figure>
-                  <figcaption>Сейчас</figcaption>
-                  <iframe title="Текущая версия" sandbox={SANDBOX} srcDoc={thumbnailHtml(project.html, 2500)} />
-                </figure>
-              </div>
-            )}
+            {cmp && <CompareSlider key={cmp.id} before={cmp.html} beforeLabel={cmp.label} after={project.html} />}
           </div>
         )}
       </div>
