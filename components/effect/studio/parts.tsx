@@ -1,7 +1,8 @@
 'use client';
 import { forwardRef, useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react';
-import { EFFORTS, KIND_LABELS, MODELS, effortName, modelName } from '@/lib/effect/agent/models';
-import type { EffortId } from '@/lib/effect/agent/types';
+import { EFFORTS, KIND_LABELS, MODELS, costOf, effortName, estimateRoute, formatUsd, modelName } from '@/lib/effect/agent/models';
+import { route as planRoute } from '@/lib/effect/agent/router';
+import type { Choice, EffortId, PlanRole } from '@/lib/effect/agent/types';
 import { clock, duration, searchProjects, timeAgo, type ChatMessage, type Project, type RunView, type StepView } from '@/lib/effect/project';
 import type { IconName } from '@/lib/effect/icons';
 import type { CatalogModel, EngineStatus } from './engine';
@@ -206,7 +207,7 @@ function StepRow({ step, catalog, now }: { step: StepView; catalog: CatalogModel
   );
 }
 
-export function Timeline({ run, catalog }: { run: RunView; catalog: CatalogModel[] }) {
+export function Timeline({ run, catalog, priced }: { run: RunView; catalog: CatalogModel[]; priced?: boolean }) {
   const now = useNow(run.status === 'running');
   const total = Math.max(0, (run.finishedAt ?? (now || run.startedAt)) - run.startedAt);
   const visible = run.steps.filter((s) => !(s.status === 'skipped' && s.role === 'answer'));
@@ -234,9 +235,22 @@ export function Timeline({ run, catalog }: { run: RunView; catalog: CatalogModel
       {run.usage && run.usage.output > 0 && (
         <p className="fxs-run-usage">
           Токены: {run.usage.input.toLocaleString('ru-RU')} на входе · {run.usage.output.toLocaleString('ru-RU')} на выходе
+          {priced && <RunCost run={run} catalog={catalog} />}
         </p>
       )}
     </div>
+  );
+}
+
+function RunCost({ run, catalog }: { run: RunView; catalog: CatalogModel[] }) {
+  const c = costOf(run.usage, catalog);
+  if (!c) return null;
+  return (
+    <span className="fxs-run-cost" title="Оценка по ценам моделей за миллион токенов. Точная сумма — в счёте провайдера.">
+      {' · ≈ '}
+      {formatUsd(c.usd)}
+      {c.partial ? '+' : ''}
+    </span>
   );
 }
 
@@ -250,6 +264,7 @@ export function Conversation(props: {
   status: EngineStatus;
   onManage?: () => Promise<void>;
   catalog: CatalogModel[];
+  priced?: boolean;
 }) {
   const end = useRef<HTMLDivElement>(null);
   const last = props.project.messages.at(-1);
@@ -261,7 +276,7 @@ export function Conversation(props: {
     <div className="fxs-msgs" role="log" aria-live="polite" aria-label="Сообщения">
       {props.project.messages.length === 0 && <p className="fxs-hint">Напишите, что изменить, или задайте вопрос о проекте.</p>}
       {props.project.messages.map((m) => (
-        <Message key={m.id} m={m} running={m.id === props.runningId} onRetry={props.onRetry} onShowPreview={props.onShowPreview} catalog={props.catalog} />
+        <Message key={m.id} m={m} running={m.id === props.runningId} onRetry={props.onRetry} onShowPreview={props.onShowPreview} catalog={props.catalog} priced={props.priced} />
       ))}
       {props.status.state === 'denied' && <AccessNote onManage={props.onManage} />}
       <div ref={end} />
@@ -269,7 +284,7 @@ export function Conversation(props: {
   );
 }
 
-function Message({ m, running, onRetry, onShowPreview, catalog }: { m: ChatMessage; running: boolean; onRetry: (t: string) => void; onShowPreview: () => void; catalog: CatalogModel[] }) {
+function Message({ m, running, onRetry, onShowPreview, catalog, priced }: { m: ChatMessage; running: boolean; onRetry: (t: string) => void; onShowPreview: () => void; catalog: CatalogModel[]; priced?: boolean }) {
   if (m.role === 'user')
     return (
       <div className="fxs-msg me">
@@ -283,7 +298,7 @@ function Message({ m, running, onRetry, onShowPreview, catalog }: { m: ChatMessa
         <EffectLogo size={18} mono />
       </span>
       <div className="fxs-msg-body">
-        {m.run && <Timeline run={m.run} catalog={catalog} />}
+        {m.run && <Timeline run={m.run} catalog={catalog} priced={priced} />}
         {m.text ? <p className="fxs-msg-text">{m.text}</p> : running ? null : null}
         <div className="fxs-msg-foot">
           <time>{clock(m.at)}</time>
@@ -336,6 +351,14 @@ function usePopover() {
     };
     window.addEventListener('pointerdown', down);
     window.addEventListener('keydown', key, true);
+    // Keep an anchored menu inside the window (phones get fixed bottom sheets instead).
+    const pop = ref.current?.querySelector<HTMLElement>('dialog.fxs-pop');
+    if (pop && getComputedStyle(pop).position === 'absolute') {
+      const r = pop.getBoundingClientRect();
+      const below = r.top >= (ref.current?.getBoundingClientRect().bottom ?? 0);
+      const room = below ? window.innerHeight - r.top - 12 : r.bottom - 12;
+      if (room < pop.offsetHeight) pop.style.maxHeight = Math.max(220, room) + 'px';
+    }
     return () => {
       window.removeEventListener('pointerdown', down);
       window.removeEventListener('keydown', key, true);
@@ -344,7 +367,7 @@ function usePopover() {
   return { open, setOpen, ref };
 }
 
-const price = (n?: number) => (n == null ? '' : n === 0 ? 'бесплатно' : '$' + (n < 1 ? n.toFixed(2) : n < 10 ? n.toFixed(1) : Math.round(n)));
+const price = (n?: number) => (n == null ? '' : n === 0 ? 'бесплатно' : '$' + (n < 1 ? n.toFixed(2) : Number.isInteger(n) || n >= 10 ? Math.round(n) : n.toFixed(1)));
 const ctx = (n?: number) => (!n ? '' : n >= 1_000_000 ? Math.round(n / 100_000) / 10 + 'M' : Math.round(n / 1000) + 'K');
 
 export function ModelPicker(props: {
@@ -355,6 +378,9 @@ export function ModelPicker(props: {
   status: EngineStatus;
   surface: 'site' | 'artifact';
   siteUrl?: string;
+  roles: Choice['roles'];
+  onRoles: (r: NonNullable<Choice['roles']>) => void;
+  effort: EffortId;
 }) {
   const { open, setOpen, ref } = usePopover();
   const [q, setQ] = useState('');
@@ -400,9 +426,18 @@ export function ModelPicker(props: {
                   {m.name} <em>{m.tag}</em>
                 </b>
                 <small>{m.blurb}</small>
+                {props.surface === 'site' && (
+                  <span className="fxs-opt-meta">
+                    <span className="fxs-chip">{ctx(m.context)}</span>
+                    <span className="fxs-chip" title="USD за миллион токенов: вход / выход">
+                      {price(m.price.input)} / {price(m.price.output)}
+                    </span>
+                  </span>
+                )}
               </span>
             </button>
           ))}
+          <TeamPlan {...props} />
           <p className="fxs-pop-title">OpenRouter</p>
           {props.surface === 'artifact' ? (
             <p className="fxs-pop-note">
@@ -446,6 +481,68 @@ export function ModelPicker(props: {
         </dialog>
       )}
     </div>
+  );
+}
+
+const PLAN_ROLES: [PlanRole, string][] = [
+  ['architect', 'Архитектор'],
+  ['designer', 'Дизайнер'],
+  ['developer', 'Разработчик'],
+  ['tester', 'Тестировщик'],
+];
+
+/** Per-step models and a cost estimate for a typical new site and a typical edit. */
+function TeamPlan(props: { model: string; catalog: CatalogModel[]; surface: 'site' | 'artifact'; roles: Choice['roles']; onRoles: (r: NonNullable<Choice['roles']>) => void; effort: EffortId }) {
+  const roles = props.roles ?? {};
+  const extra = [...new Set([props.model, ...Object.values(roles)].filter((m): m is string => !!m && m.startsWith('or:')))];
+  const choice: Choice = { model: props.model === 'auto' ? undefined : props.model, effort: props.effort, roles };
+  // Pure and instant: two routes and a few multiplications.
+  const est =
+    props.surface === 'site'
+      ? {
+          fresh: estimateRoute(planRoute('Сделай сайт для кофейни', { choice }), props.catalog),
+          edit: estimateRoute(planRoute('Поменяй цвет кнопок и добавь отзывы', { current: 'website', choice }), props.catalog),
+        }
+      : null;
+  const set = (role: PlanRole, v: string) => {
+    const next = { ...roles };
+    if (v) next[role] = v;
+    else delete next[role];
+    props.onRoles(next);
+  };
+  return (
+    <>
+      <p className="fxs-pop-title">Команда по шагам</p>
+      <div className="fxs-team">
+        {PLAN_ROLES.map(([role, title]) => (
+          <label key={role} className="fxs-team-row">
+            <span>{title}</span>
+            <select value={roles[role] ?? ''} onChange={(e) => set(role, e.target.value)}>
+              <option value="">{props.model === 'auto' ? 'Авто' : 'Как выбрано выше'}</option>
+              {MODELS.map((m) => (
+                <option key={m.id} value={m.id}>
+                  {m.short}
+                </option>
+              ))}
+              {extra.map((m) => (
+                <option key={m} value={m}>
+                  {modelName(m, props.catalog)}
+                </option>
+              ))}
+            </select>
+          </label>
+        ))}
+      </div>
+      {est ? (
+        <p className="fxs-pop-note fxs-estimate">
+          Оценка: новый сайт ≈ {formatUsd(est.fresh.usd)}
+          {est.fresh.partial ? '+' : ''} · правка ≈ {formatUsd(est.edit.usd)}
+          {est.edit.partial ? '+' : ''}. Точная сумма после генерации — под шагами.
+        </p>
+      ) : (
+        <p className="fxs-pop-note">Внутри Claude генерация идёт в рамках вашего плана — отдельной оплаты нет.</p>
+      )}
+    </>
   );
 }
 
@@ -497,6 +594,8 @@ type ComposerProps = {
   effort: EffortId;
   onModel: (m: string) => void;
   onEffort: (e: EffortId) => void;
+  roles: Choice['roles'];
+  onRoles: (r: NonNullable<Choice['roles']>) => void;
   catalog: CatalogModel[];
   status: EngineStatus;
   surface: 'site' | 'artifact';
@@ -547,7 +646,18 @@ export const Composer = forwardRef<HTMLTextAreaElement, ComposerProps>(function 
         }}
       />
       <div className="fxs-composer-row">
-        <ModelPicker model={p.model} label={p.choiceLabel} onModel={p.onModel} catalog={p.catalog} status={p.status} surface={p.surface} siteUrl={p.siteUrl} />
+        <ModelPicker
+          model={p.model}
+          label={p.choiceLabel}
+          onModel={p.onModel}
+          catalog={p.catalog}
+          status={p.status}
+          surface={p.surface}
+          siteUrl={p.siteUrl}
+          roles={p.roles}
+          onRoles={p.onRoles}
+          effort={p.effort}
+        />
         <EffortPicker effort={p.effort} onEffort={p.onEffort} />
         <span className="fxs-composer-sp" />
         {p.big && <span className="fxs-kbd-hint">Shift+Enter — новая строка</span>}

@@ -119,7 +119,12 @@ export function route(
   const effort: Exclude<EffortId, 'auto'> =
     opts.choice?.effort && opts.choice.effort !== 'auto' ? opts.choice.effort : autoEffort(c.intent, c.kind, complexity);
   const auto = autoModels(c.intent, c.kind, complexity);
-  const m = (role: keyof Plan) => picked || auto[role];
+  // A per-role choice from the model hub wins over the composer's model, which wins over Авто.
+  const roles = opts.choice?.roles ?? {};
+  const m = (role: keyof Plan) => {
+    const r = role === 'answer' ? undefined : roles[role];
+    return (r && parseModel(r) ? r : '') || picked || auto[role];
+  };
   const level = levelFor(effort);
   // Structured planning steps think less than the developer unless the user asked for more.
   const light = effort === 'quick' ? 'low' : effort === 'thoughtful' ? 'low' : level === 'max' ? 'high' : 'medium';

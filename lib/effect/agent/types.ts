@@ -19,7 +19,8 @@ export type Role = 'router' | 'architect' | 'designer' | 'developer' | 'tester' 
 
 export type Msg = { role: 'system' | 'user' | 'assistant'; content: string };
 
-export type Usage = { input: number; output: number };
+/** Token usage. `byModel` splits it per model reference so a cost can be estimated. */
+export type Usage = { input: number; output: number; byModel?: Record<string, { input: number; output: number }> };
 
 export type CallOpts = {
   role: Role;
@@ -78,7 +79,9 @@ export type Route = {
 };
 
 /** What the user picked in the composer. Empty / "auto" means Effect decides. */
-export type Choice = { model?: string; effort?: EffortId };
+/** Roles that can get their own model in the model hub. */
+export type PlanRole = 'architect' | 'designer' | 'developer' | 'tester';
+export type Choice = { model?: string; effort?: EffortId; roles?: Partial<Record<PlanRole, string>> };
 
 /** Architect output. Loose on purpose: models fill what fits the project. */
 export type Spec = {

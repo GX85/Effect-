@@ -17,7 +17,9 @@ var MODELS = [
     short: "Astrolabe",
     tag: "\u0421\u0430\u043C\u0430\u044F \u043C\u043E\u0449\u043D\u0430\u044F",
     blurb: "\u0411\u043E\u043B\u044C\u0448\u0438\u0435 \u043C\u043D\u043E\u0433\u043E\u0441\u0442\u0440\u0430\u043D\u0438\u0447\u043D\u044B\u0435 \u0441\u0430\u0439\u0442\u044B, \u043F\u0440\u0438\u043B\u043E\u0436\u0435\u043D\u0438\u044F \u0438 \u0438\u0433\u0440\u044B \u0441 \u0443\u0440\u043E\u0432\u043D\u044F\u043C\u0438, \u0444\u0438\u0437\u0438\u043A\u043E\u0439 \u0438 \u0437\u0432\u0443\u043A\u043E\u043C.",
-    tier: "complex"
+    tier: "complex",
+    price: { input: 4, output: 20 },
+    context: 1e6
   },
   {
     id: "compass",
@@ -25,7 +27,9 @@ var MODELS = [
     short: "Compass",
     tag: "\u0411\u0430\u043B\u0430\u043D\u0441",
     blurb: "\u0421\u0430\u0439\u0442\u044B, \u043B\u0435\u043D\u0434\u0438\u043D\u0433\u0438 \u0438 \u043F\u0440\u0435\u0437\u0435\u043D\u0442\u0430\u0446\u0438\u0438: \u0431\u044B\u0441\u0442\u0440\u043E \u0438 \u0441 \u0432\u043D\u0438\u043C\u0430\u043D\u0438\u0435\u043C \u043A \u0434\u0435\u0442\u0430\u043B\u044F\u043C.",
-    tier: "default"
+    tier: "default",
+    price: { input: 2, output: 10 },
+    context: 1e6
   },
   {
     id: "spyglass",
@@ -33,7 +37,9 @@ var MODELS = [
     short: "Spyglass",
     tag: "\u0421\u0430\u043C\u0430\u044F \u0431\u044B\u0441\u0442\u0440\u0430\u044F",
     blurb: "\u041E\u0442\u0432\u0435\u0442\u044B, \u0431\u044B\u0441\u0442\u0440\u044B\u0435 \u043F\u0440\u0430\u0432\u043A\u0438 \u0438 \u0447\u0435\u0440\u043D\u043E\u0432\u0438\u043A\u0438 \u0437\u0430 \u0441\u0435\u043A\u0443\u043D\u0434\u044B.",
-    tier: "quick"
+    tier: "quick",
+    price: { input: 0.1, output: 0.5 },
+    context: 1e6
   }
 ];
 var EFFORTS = [
@@ -73,6 +79,58 @@ function modelName(ref, catalog) {
   return hit?.name || m.id.split("/")[1] || m.id;
 }
 var effortName = (e) => EFFORTS.find((x) => x.id === e)?.name ?? "\u0410\u0432\u0442\u043E";
+function priceOf(ref, catalog) {
+  const m = parseModel(ref);
+  if (!m) return null;
+  if (m.provider === "effect") return MODELS.find((x) => x.id === m.id).price;
+  const hit = catalog?.find((c) => c.id === m.id);
+  return hit && hit.prompt != null && hit.completion != null ? { input: hit.prompt, output: hit.completion } : null;
+}
+function costOf(usage, catalog) {
+  if (!usage?.byModel) return null;
+  let usd = 0;
+  let partial = false;
+  let any = false;
+  for (const [ref, u] of Object.entries(usage.byModel)) {
+    const p = priceOf(ref, catalog);
+    if (!p) {
+      partial = true;
+      continue;
+    }
+    any = true;
+    usd += (u.input * p.input + u.output * p.output) / 1e6;
+  }
+  return any ? { usd, partial } : null;
+}
+var TYPICAL = {
+  architect: [2500, 1500],
+  designer: [3500, 1800],
+  developer: [7e3, 16e3],
+  tester: [18e3, 1200],
+  reviewer: [18e3, 1500],
+  answer: [3e3, 900]
+};
+function estimateRoute(route2, catalog) {
+  let usd = 0;
+  let partial = false;
+  const add = (role, model, share = 1) => {
+    const p = priceOf(model, catalog);
+    const t = TYPICAL[role];
+    if (!t) return;
+    if (!p) return void (partial = true);
+    usd += (t[0] * p.input + t[1] * p.output) / 1e6 * share;
+  };
+  for (const s of route2.steps) add(s.role, s.model);
+  const dev = route2.steps.find((s) => s.role === "developer");
+  if (dev && route2.fixRounds > 0) add("developer", dev.model, 0.35);
+  return { usd, partial };
+}
+function formatUsd(usd) {
+  if (usd < 1e-3) return "<$0.001";
+  if (usd < 0.1) return "$" + usd.toFixed(3);
+  if (usd < 10) return "$" + usd.toFixed(2);
+  return "$" + Math.round(usd);
+}
 
 // lib/effect/motion-kit.ts
 var MOTION_CSS = `<style id="fx-motion-css">
@@ -558,7 +616,11 @@ function route(text, opts = {}) {
   const picked = opts.choice?.model && parseModel(opts.choice.model) ? opts.choice.model : "";
   const effort = opts.choice?.effort && opts.choice.effort !== "auto" ? opts.choice.effort : autoEffort(c.intent, c.kind, complexity);
   const auto = autoModels(c.intent, c.kind, complexity);
-  const m = (role) => picked || auto[role];
+  const roles = opts.choice?.roles ?? {};
+  const m = (role) => {
+    const r = role === "answer" ? void 0 : roles[role];
+    return (r && parseModel(r) ? r : "") || picked || auto[role];
+  };
   const level = levelFor(effort);
   const light = effort === "quick" ? "low" : effort === "thoughtful" ? "low" : level === "max" ? "high" : "medium";
   const steps = [];
@@ -909,10 +971,16 @@ async function runPipeline(input) {
   const maxCont = input.maxContinuations ?? 4;
   const previewEvery = input.previewEvery ?? 1200;
   let route2;
-  const addUsage = (u) => {
+  const addUsage = (u, model) => {
     if (!u) return;
     usage.input += u.input || 0;
     usage.output += u.output || 0;
+    if (model) {
+      const by = usage.byModel ??= {};
+      const m = by[model] ??= { input: 0, output: 0 };
+      m.input += u.input || 0;
+      m.output += u.output || 0;
+    }
   };
   try {
     let classified = classify(input.request, project?.kind ?? null);
@@ -921,7 +989,7 @@ async function runPipeline(input) {
       try {
         const ctx = { request: input.request, kind: project.kind, intent: classified.intent, projectName: project.name, history: project.history };
         const r = await input.call("spyglass", buildMessages("router", ctx), { role: "router", effort: "low", signal, ctx });
-        addUsage(r.usage);
+        addUsage(r.usage, "spyglass");
         const j2 = parseJson(r.text);
         if (j2 && (j2.intent === "new" || j2.intent === "edit" || j2.intent === "question")) {
           classified = { intent: j2.intent, kind: j2.intent === "new" && isKind(j2.kind) ? j2.kind : project.kind, confidence: 0.9 };
@@ -974,7 +1042,7 @@ async function runPipeline(input) {
         let truncated = false;
         try {
           const r = await input.call(plan.model, messages, { role: plan.role, effort: plan.effort, signal, onText, ctx });
-          addUsage(r.usage);
+          addUsage(r.usage, plan.model);
           onText(r.text);
           truncated = r.truncated;
         } catch (e) {
@@ -1240,10 +1308,13 @@ export {
   buildMessages,
   classify,
   complexityOf,
+  costOf,
   defaultSyntaxCheck,
   detectKind,
   effortName,
+  estimateRoute,
   extractHtml,
+  formatUsd,
   isComplete,
   isEffort,
   isKind,
@@ -1252,6 +1323,7 @@ export {
   modelName,
   parseJson,
   parseModel,
+  priceOf,
   route,
   runPipeline,
   staticChecks,

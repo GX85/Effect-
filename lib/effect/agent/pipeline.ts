@@ -150,10 +150,16 @@ export async function runPipeline(input: PipelineInput): Promise<DoneEvent | nul
   const previewEvery = input.previewEvery ?? 1200;
   let route: Route;
 
-  const addUsage = (u?: Usage) => {
+  const addUsage = (u?: Usage, model?: string) => {
     if (!u) return;
     usage.input += u.input || 0;
     usage.output += u.output || 0;
+    if (model) {
+      const by = (usage.byModel ??= {});
+      const m = (by[model] ??= { input: 0, output: 0 });
+      m.input += u.input || 0;
+      m.output += u.output || 0;
+    }
   };
 
   try {
@@ -164,7 +170,7 @@ export async function runPipeline(input: PipelineInput): Promise<DoneEvent | nul
       try {
         const ctx: StepContext = { request: input.request, kind: project.kind, intent: classified.intent, projectName: project.name, history: project.history };
         const r = await input.call('spyglass', buildMessages('router', ctx), { role: 'router', effort: 'low', signal, ctx });
-        addUsage(r.usage);
+        addUsage(r.usage, 'spyglass');
         const j = parseJson<{ intent?: string; kind?: string }>(r.text);
         if (j && (j.intent === 'new' || j.intent === 'edit' || j.intent === 'question')) {
           classified = { intent: j.intent, kind: j.intent === 'new' && isKind(j.kind) ? j.kind : project.kind, confidence: 0.9 };
@@ -221,7 +227,7 @@ export async function runPipeline(input: PipelineInput): Promise<DoneEvent | nul
         let truncated = false;
         try {
           const r = await input.call(plan.model, messages, { role: plan.role, effort: plan.effort, signal, onText, ctx });
-          addUsage(r.usage);
+          addUsage(r.usage, plan.model);
           onText(r.text);
           truncated = r.truncated;
         } catch (e) {

@@ -162,7 +162,8 @@ test('new project runs architect → designer → developer → tester and stops
   assert.ok(events.some((e) => e.type === 'text'));
   assert.equal(events[0].type, 'route');
   assert.equal(events.at(-1)!.type, 'done');
-  assert.deepEqual(done!.usage, { input: 40, output: 80 });
+  assert.equal(done!.usage!.input, 40);
+  assert.equal(done!.usage!.output, 80);
   // The developer saw the architect's spec and the designer's system.
   assert.match(log[2].messages[1].content, /Тёплый минимализм/);
   assert.match(log[2].messages[1].content, /бронь/);

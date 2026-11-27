@@ -12,7 +12,7 @@ import { bundle, zip } from '@/lib/effect/vfs';
 import { withMotionKit } from '@/lib/effect/motion-kit';
 import { makeDiagnose, makePlaytest } from './diagnose';
 import { isEffort, modelName, parseModel } from '@/lib/effect/agent/models';
-import type { AgentEvent, EffortId } from '@/lib/effect/agent/types';
+import type { AgentEvent, Choice, EffortId } from '@/lib/effect/agent/types';
 import {
   amendHtml,
   applyEvent,
@@ -43,7 +43,7 @@ type Toast = { id: number; text: string; tone: 'ok' | 'err' };
 
 const PREFS = 'effect.studio.prefs';
 
-function readPrefs(): { model?: string; effort?: EffortId; device?: Device } {
+function readPrefs(): { model?: string; effort?: EffortId; device?: Device; roles?: Choice['roles'] } {
   try {
     return JSON.parse(localStorage.getItem(PREFS) || '{}');
   } catch {
@@ -81,6 +81,7 @@ export default function Studio({ engine, onExit, initialPrompt, siteUrl, prismUr
   const [status, setStatus] = useState<EngineStatus>({ state: 'checking' });
   const [model, setModel] = useState('auto');
   const [effort, setEffort] = useState<EffortId>('auto');
+  const [roles, setRoles] = useState<NonNullable<Choice['roles']>>({});
   const [catalog, setCatalog] = useState<CatalogModel[]>([]);
   const [running, setRunning] = useState<Running | null>(null);
   const [live, setLive] = useState<{ projectId: string; html: string } | null>(null);
@@ -106,10 +107,10 @@ export default function Studio({ engine, onExit, initialPrompt, siteUrl, prismUr
   }, [projects]);
   const composerRef = useRef<HTMLTextAreaElement>(null);
   // Latest choice and engine for the async run (read when a message is sent).
-  const live$ = useRef({ model, effort, engine });
+  const live$ = useRef({ model, effort, engine, roles });
   useEffect(() => {
-    live$.current = { model, effort, engine };
-  }, [model, effort, engine]);
+    live$.current = { model, effort, engine, roles };
+  }, [model, effort, engine, roles]);
 
   const current = useMemo(() => projects.find((p) => p.id === currentId) ?? null, [projects, currentId]);
 
@@ -130,6 +131,8 @@ export default function Studio({ engine, onExit, initialPrompt, siteUrl, prismUr
       if (pid && list.some((p) => p.id === pid)) setCurrentId(pid);
       if (prefs.model && (prefs.model === 'auto' || parseModel(prefs.model))) setModel(prefs.model);
       if (isEffort(prefs.effort)) setEffort(prefs.effort);
+      if (prefs.roles && typeof prefs.roles === 'object')
+        setRoles(Object.fromEntries(Object.entries(prefs.roles).filter(([k, v]) => ['architect', 'designer', 'developer', 'tester'].includes(k) && parseModel(v))));
       if (prefs.device) setDevice(prefs.device);
       setSidebar(window.matchMedia('(min-width: 1180px)').matches);
       setReady(true);
@@ -163,11 +166,11 @@ export default function Studio({ engine, onExit, initialPrompt, siteUrl, prismUr
   useEffect(() => {
     if (!ready) return;
     try {
-      localStorage.setItem(PREFS, JSON.stringify({ model, effort, device }));
+      localStorage.setItem(PREFS, JSON.stringify({ model, effort, device, roles }));
     } catch {
       /* storage blocked */
     }
-  }, [model, effort, device, ready]);
+  }, [model, effort, device, roles, ready]);
 
   const patch = useCallback((id: string, fn: (p: Project) => Project) => {
     setProjects((list) => list.map((p) => (p.id === id ? fn(p) : p)));
@@ -316,7 +319,7 @@ export default function Studio({ engine, onExit, initialPrompt, siteUrl, prismUr
         await runPipeline({
           request: text,
           project: input,
-          choice: { model: cur.model === 'auto' ? undefined : cur.model, effort: cur.effort },
+          choice: { model: cur.model === 'auto' ? undefined : cur.model, effort: cur.effort, roles: cur.roles },
           call: cur.engine.call,
           onEvent,
           signal: ctl.signal,
@@ -527,6 +530,8 @@ export default function Studio({ engine, onExit, initialPrompt, siteUrl, prismUr
       effort={effort}
       onModel={setModel}
       onEffort={setEffort}
+      roles={roles}
+      onRoles={setRoles}
       catalog={catalog}
       status={status}
       surface={engine.surface}
@@ -595,6 +600,7 @@ export default function Studio({ engine, onExit, initialPrompt, siteUrl, prismUr
               status={status}
               onManage={manage}
               catalog={catalog}
+              priced={engine.surface === 'site'}
             />
             {focusEl && (
               <div className="fxs-focus">
