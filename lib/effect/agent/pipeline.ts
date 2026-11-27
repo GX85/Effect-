@@ -11,6 +11,7 @@ import { KIND_LABELS, isKind } from './models.ts';
 import { classify, route as makeRoute, stepTitle } from './router.ts';
 import { auditChecks, auditOutput, auditSummary, type AuditReport } from '../audit.ts';
 import { stripMotionKit, withMotionKit } from '../motion-kit.ts';
+import { playChecks, playSummary, withGameKit, type PlayReport } from '../game-kit.ts';
 import { applyPatches, hasPatches, parsePatches } from '../patch.ts';
 import { bundle, parseFiles, type Files } from '../vfs.ts';
 import {
@@ -51,6 +52,8 @@ export type PipelineInput = {
   previewEvery?: number;
   /** Runs the page in a real browser (sandboxed preview) and reports runtime facts. */
   diagnose?: (html: string, kind: Kind) => Promise<AuditReport[]>;
+  /** Plays a game for a few seconds in a sandboxed frame (games only). */
+  playtest?: (html: string) => Promise<PlayReport | null>;
 };
 
 /** Codes after which nothing else should be attempted in this run. */
@@ -183,7 +186,7 @@ export async function runPipeline(input: PipelineInput): Promise<DoneEvent | nul
       ultra: route.effort === 'ultra',
       memory: route.intent === 'new' ? undefined : project?.memory,
     };
-    const polish = (h: string) => withMotionKit(h, { intro: route.kind !== 'game' });
+    const polish = (h: string) => (route.kind === 'game' ? withMotionKit(withGameKit(h), { intro: false }) : withMotionKit(h));
 
     // One model call with streaming events. `html` steps auto-continue when cut off.
     const runStep = async (plan: StepPlan, ctx: StepContext, mode: 'json' | 'html' | 'text', id = plan.id) => {
@@ -361,18 +364,35 @@ export async function runPipeline(input: PipelineInput): Promise<DoneEvent | nul
     let runtime: Check[] = [];
     let audits = 0;
     const diagnose = async () => {
-      if (!input.diagnose || signal?.aborted) return [];
-      const id = audits++ ? 'audit-' + audits : 'audit';
-      const started = now();
-      emit({ type: 'step', id, role: 'audit', status: 'start', title: 'Диагностика', model: 'browser', at: started });
-      try {
-        const reports = await input.diagnose(html!, route.kind);
-        emit({ type: 'step', id, status: 'done', ms: now() - started, summary: auditSummary(reports), output: auditOutput(reports) });
-        return auditChecks(reports);
-      } catch {
-        emit({ type: 'step', id, status: 'skipped', reason: 'Не удалось запустить проверку в браузере' });
-        return [];
+      if (signal?.aborted) return [];
+      audits++;
+      let out: Check[] = [];
+      if (input.diagnose) {
+        const id = audits > 1 ? 'audit-' + audits : 'audit';
+        const started = now();
+        emit({ type: 'step', id, role: 'audit', status: 'start', title: 'Диагностика', model: 'browser', at: started });
+        try {
+          const reports = await input.diagnose(html!, route.kind);
+          emit({ type: 'step', id, status: 'done', ms: now() - started, summary: auditSummary(reports), output: auditOutput(reports) });
+          out = auditChecks(reports);
+        } catch {
+          emit({ type: 'step', id, status: 'skipped', reason: 'Не удалось запустить проверку в браузере' });
+        }
       }
+      if (route.kind === 'game' && input.playtest && !signal?.aborted) {
+        const pid = audits > 1 ? 'playtest-' + audits : 'playtest';
+        const t0 = now();
+        emit({ type: 'step', id: pid, role: 'playtester', status: 'start', title: 'Плейтестер', model: 'browser', at: t0 });
+        try {
+          const play = await input.playtest(html!);
+          const pc = playChecks(play);
+          emit({ type: 'step', id: pid, status: 'done', ms: now() - t0, summary: playSummary(play), output: pc.length ? pc.map((c) => `• [${c.severity}] ${c.message}`).join('\n') : 'Игра запускается, реагирует на клавиши и касания, ошибок нет.' });
+          out = [...out, ...pc.map((c) => ({ ...c, id: 'runtime-' + c.id }))];
+        } catch {
+          emit({ type: 'step', id: pid, status: 'skipped', reason: 'Не удалось запустить игру' });
+        }
+      }
+      return out;
     };
     runtime = await diagnose();
     let checks = [...staticChecks(html, route.kind, input.syntax ?? null), ...runtime];

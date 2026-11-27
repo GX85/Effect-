@@ -5,6 +5,7 @@
  */
 import { KIND_LABELS } from './models.ts';
 import { MOTION_DOC } from '../motion-kit.ts';
+import { GAME_DOC } from '../game-kit.ts';
 import type { Check, Kind, Msg, Report, Role, StepContext } from './types.ts';
 
 export const MAX_CONTEXT_HTML = 180_000;
@@ -37,7 +38,9 @@ export const KIND_GUIDES: Record<Kind, string> = {
 - Depth: rising difficulty or levels, collectibles or power-ups, enemies or obstacles with varied behaviour, juicy feedback (particles, screen shake, hit flash, easing).
 - Audio: synthesise effects with the Web Audio API; create/resume the AudioContext only on the first user input; a mute toggle that is remembered.
 - Controls: full keyboard controls AND touch controls for phones (on-screen buttons, a virtual joystick or touch zones; preventDefault on touch to stop scrolling; pointer events). The HUD stays readable at 360px wide.
-- Best score saved in localStorage inside try/catch. No external assets: draw everything with canvas shapes, gradients and text.`,
+- Best score saved in localStorage inside try/catch. No external assets: draw everything with canvas shapes, gradients and text.
+- Enter, Space and a tap must start or restart the game; arrows/WASD and touch must move the player — a playtester will press them.
+${GAME_DOC}`,
   app: `- A real working tool: complete core flow, state kept in memory and persisted to localStorage (inside try/catch), empty states, validation, keyboard support, undo where it makes sense.
 - Polished app layout: toolbar or sidebar, clear primary action, responsive down to 360px.
 - Pre-fill realistic example data so the first screen shows the tool working, marked as an example.`,

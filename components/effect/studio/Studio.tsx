@@ -10,7 +10,7 @@ import { runPipeline } from '@/lib/effect/agent/pipeline';
 import { updateMemory, type Memory } from '@/lib/effect/brain';
 import { bundle, zip } from '@/lib/effect/vfs';
 import { withMotionKit } from '@/lib/effect/motion-kit';
-import { makeDiagnose } from './diagnose';
+import { makeDiagnose, makePlaytest } from './diagnose';
 import { isEffort, modelName, parseModel } from '@/lib/effect/agent/models';
 import type { AgentEvent, EffortId } from '@/lib/effect/agent/types';
 import {
@@ -314,6 +314,7 @@ export default function Studio({ engine, onExit, initialPrompt, siteUrl, prismUr
           signal: ctl.signal,
           syntax: cur.engine.syntax ?? null,
           diagnose: makeDiagnose(),
+          playtest: makePlaytest(),
         });
       } finally {
         runRef.current = null;

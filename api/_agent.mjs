@@ -138,6 +138,61 @@ function withMotionKit(html, opts = {}) {
   return bodyEnd >= 0 ? out.slice(0, bodyEnd) + MOTION_JS + out.slice(bodyEnd) : out + MOTION_JS;
 }
 
+// lib/effect/game-kit.ts
+var GAME_KIT = `<script id="fx-game-kit">(function(){
+var G={};var keys={},pressed={};
+G.canvas=function(sel){var c=typeof sel==='string'?document.querySelector(sel):sel;if(!c){c=document.createElement('canvas');document.body.appendChild(c)}var ctx=c.getContext('2d');function fit(){var d=Math.min(window.devicePixelRatio||1,2),w=c.clientWidth||innerWidth,h=c.clientHeight||innerHeight;c.width=Math.round(w*d);c.height=Math.round(h*d);ctx.setTransform(d,0,0,d,0,0);G.w=w;G.h=h}fit();addEventListener('resize',fit);G.ctx=ctx;return ctx};
+G.loop=function(update,render){var last=0,acc=0,step=1/120,paused=false;G.pause=function(v){paused=v===undefined?!paused:v;return paused};document.addEventListener('visibilitychange',function(){if(document.hidden)paused=true});function f(t){var dt=last?Math.min((t-last)/1000,1/30):0;last=t;if(!paused){acc+=dt;while(acc>=step){update(step);acc-=step;for(var k in pressed)pressed[k]=false}}render(paused);G._frames=(G._frames||0)+1;requestAnimationFrame(f)}requestAnimationFrame(f)};
+addEventListener('keydown',function(e){if(!keys[e.code])pressed[e.code]=true;keys[e.code]=true;if(/Arrow|Space/.test(e.code))e.preventDefault();G.unlock()});addEventListener('keyup',function(e){keys[e.code]=false});
+G.key=function(c){return !!keys[c]};G.pressed=function(c){return !!pressed[c]};
+G.pointer={x:0,y:0,down:false};function pt(e){var r=e.target.getBoundingClientRect?e.target.getBoundingClientRect():{left:0,top:0};G.pointer.x=e.clientX-r.left;G.pointer.y=e.clientY-r.top}
+addEventListener('pointerdown',function(e){G.pointer.down=true;pt(e);G.unlock()});addEventListener('pointerup',function(){G.pointer.down=false});addEventListener('pointermove',pt);
+G.joystick=function(opt){opt=opt||{};var j={x:0,y:0,active:false,id:null,ox:0,oy:0,r:opt.radius||56};addEventListener('pointerdown',function(e){if(e.pointerType==='mouse'||j.active)return;if(opt.left!==false&&e.clientX>innerWidth/2)return;j.active=true;j.id=e.pointerId;j.ox=e.clientX;j.oy=e.clientY});addEventListener('pointermove',function(e){if(!j.active||e.pointerId!==j.id)return;var dx=e.clientX-j.ox,dy=e.clientY-j.oy,l=Math.hypot(dx,dy)||1,k=Math.min(1,l/j.r);j.x=dx/l*k;j.y=dy/l*k});addEventListener('pointerup',function(e){if(e.pointerId===j.id){j.active=false;j.x=j.y=0}});j.draw=function(ctx){if(!j.active)return;ctx.save();ctx.globalAlpha=.35;ctx.beginPath();ctx.arc(j.ox,j.oy,j.r,0,7);ctx.fillStyle='#fff';ctx.fill();ctx.globalAlpha=.6;ctx.beginPath();ctx.arc(j.ox+j.x*j.r,j.oy+j.y*j.r,j.r*.4,0,7);ctx.fill();ctx.restore()};return j};
+G.button=function(label,x,y,r){var b={label:label,x:x,y:y,r:r||34,down:false};addEventListener('pointerdown',function(e){if(Math.hypot(e.clientX-b.x(),e.clientY-b.y())<b.r)b.down=true});addEventListener('pointerup',function(){b.down=false});b.draw=function(ctx){ctx.save();ctx.globalAlpha=b.down?.55:.3;ctx.beginPath();ctx.arc(b.x(),b.y(),b.r,0,7);ctx.fillStyle='#fff';ctx.fill();ctx.globalAlpha=.9;ctx.fillStyle='#000';ctx.font='600 14px system-ui';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(b.label,b.x(),b.y());ctx.restore()};return b};
+G.hit=function(a,b){return a.x<b.x+b.w&&a.x+a.w>b.x&&a.y<b.y+b.h&&a.y+a.h>b.y};G.hitCircle=function(a,b){return Math.hypot(a.x-b.x,a.y-b.y)<a.r+b.r};
+var parts=[];G.burst=function(x,y,color,n,speed){for(var i=0;i<(n||16);i++){var a=Math.random()*6.283,s=(speed||160)*(.3+Math.random());parts.push({x:x,y:y,vx:Math.cos(a)*s,vy:Math.sin(a)*s,life:.6+Math.random()*.4,c:color||'#fff'})}};
+G.particles=function(ctx,dt){for(var i=parts.length-1;i>=0;i--){var p=parts[i];p.life-=dt;if(p.life<=0){parts.splice(i,1);continue}p.x+=p.vx*dt;p.y+=p.vy*dt;p.vy+=240*dt;ctx.globalAlpha=Math.max(0,p.life);ctx.fillStyle=p.c;ctx.fillRect(p.x-2,p.y-2,4,4)}ctx.globalAlpha=1};
+var shakeT=0,shakeA=0;G.shake=function(a,t){shakeA=a||8;shakeT=t||.25};G.applyShake=function(ctx,dt){if(shakeT>0){shakeT-=dt;ctx.translate((Math.random()-.5)*shakeA,(Math.random()-.5)*shakeA)}};
+var ac=null,muted=false;try{muted=localStorage.getItem('fx-muted')==='1'}catch(e){}
+G.unlock=function(){if(ac||muted)return;try{ac=new (window.AudioContext||window.webkitAudioContext)()}catch(e){}};
+G.sound=function(freq,dur,type,vol){if(!ac||muted)return;try{var o=ac.createOscillator(),g=ac.createGain();o.type=type||'square';o.frequency.value=freq||440;g.gain.value=vol||.06;g.gain.exponentialRampToValueAtTime(.0001,ac.currentTime+(dur||.12));o.connect(g).connect(ac.destination);o.start();o.stop(ac.currentTime+(dur||.12))}catch(e){}};
+G.mute=function(v){muted=v===undefined?!muted:v;try{localStorage.setItem('fx-muted',muted?'1':'0')}catch(e){}return muted};G.muted=function(){return muted};
+G.save=function(k,v){try{localStorage.setItem('fx-'+k,JSON.stringify(v))}catch(e){}};G.load=function(k,d){try{var v=localStorage.getItem('fx-'+k);return v==null?d:JSON.parse(v)}catch(e){return d}};
+var scenes={},cur=null;G.scene=function(name,s){scenes[name]=s};G.go=function(name,arg){cur=scenes[name];if(cur&&cur.enter)cur.enter(arg);G.current=name};G.update=function(dt){if(cur&&cur.update)cur.update(dt)};G.render=function(ctx,p){if(cur&&cur.render)cur.render(ctx,p)};
+window.FXGame=G;})();</script>`;
+var GAME_DOC = `Effect Game Kit is injected before your scripts as window.FXGame (G). Build on it instead of re-writing the plumbing:
+- const ctx = G.canvas('#game') sizes the canvas to its box and devicePixelRatio (G.w, G.h in CSS pixels).
+- G.loop(update(dt), render(paused)) runs a fixed-step loop and pauses when the tab is hidden; G.pause() toggles pause.
+- Input: G.key('ArrowLeft'), G.pressed('Space') (once per press), G.pointer {x, y, down}; touch: const stick = G.joystick() and const jump = G.button('\u2191', () => G.w - 70, () => G.h - 90) \u2014 draw them with stick.draw(ctx), jump.draw(ctx).
+- Collisions: G.hit(a, b) for {x, y, w, h}, G.hitCircle(a, b) for {x, y, r}.
+- Juice: G.burst(x, y, color), G.particles(ctx, dt) every frame, G.shake(8, 0.25) and G.applyShake(ctx, dt) inside ctx.save()/restore().
+- Audio: G.sound(freq, seconds, 'square'|'sine'|'sawtooth'|'triangle'); it starts after the first input; G.mute() toggles and remembers.
+- Saving: G.save('best', 1200), G.load('best', 0).
+- Scenes: G.scene('title', {enter, update, render}), G.go('title'), then call G.update(dt) / G.render(ctx) from the loop.`;
+function withGameKit(html) {
+  const out = html.replace(/<script id="fx-game-kit">[\s\S]*?<\/script>/g, "");
+  const m = out.match(/<head[^>]*>/i);
+  if (m && m.index != null) return out.slice(0, m.index + m[0].length) + GAME_KIT + out.slice(m.index + m[0].length);
+  return GAME_KIT + out;
+}
+function playChecks(r) {
+  if (!r) return [];
+  const out = [];
+  if (r.timeout) out.push({ id: "play-timeout", ok: false, severity: "critical", message: "The game did not respond to the playtest (it may hang on load)." });
+  for (const e of r.errors) out.push({ id: "play-error", ok: false, severity: "critical", message: `While playing: ${e}` });
+  if (!r.timeout && r.frames < 10) out.push({ id: "play-loop", ok: false, severity: "critical", message: "No animation loop ran while playing (requestAnimationFrame never ticked)." });
+  if (!r.timeout && !r.canvas) out.push({ id: "play-canvas", ok: false, severity: "major", message: "No canvas found; the game should draw on a <canvas>." });
+  if (r.frozen) out.push({ id: "play-frozen", ok: false, severity: "major", message: `The picture never changed during ${r.inputs} simulated key presses and taps (stuck on a screen, or input is ignored). Make Enter/Space/tap start the game and arrows/touch move the player.` });
+  if (!r.timeout && r.fps > 0 && r.fps < 30) out.push({ id: "play-fps", ok: false, severity: "major", message: `Low frame rate while playing: ${r.fps} FPS. Reduce per-frame work (no shadowBlur, fewer particles, no allocations in the loop).` });
+  return out;
+}
+function playSummary(r) {
+  if (!r) return "\u041F\u043B\u0435\u0439\u0442\u0435\u0441\u0442 \u043D\u0435\u0434\u043E\u0441\u0442\u0443\u043F\u0435\u043D";
+  if (r.timeout) return "\u0418\u0433\u0440\u0430 \u043D\u0435 \u043E\u0442\u0432\u0435\u0442\u0438\u043B\u0430";
+  const parts = [r.errors.length ? `\u043E\u0448\u0438\u0431\u043E\u043A ${r.errors.length}` : "\u0431\u0435\u0437 \u043E\u0448\u0438\u0431\u043E\u043A", `${r.fps} FPS`, r.frozen ? "\u043A\u0430\u0440\u0442\u0438\u043D\u043A\u0430 \u043D\u0435 \u043C\u0435\u043D\u044F\u0435\u0442\u0441\u044F" : `\u043A\u0430\u0434\u0440\u043E\u0432 \u0441 \u0438\u0437\u043C\u0435\u043D\u0435\u043D\u0438\u044F\u043C\u0438: ${r.changes}`];
+  return parts.join(" \xB7 ");
+}
+
 // lib/effect/agent/prompts.ts
 var MAX_CONTEXT_HTML = 18e4;
 var IDENTITY = "You are part of Effect, an AI product studio. A team of agents (Architect, Designer, Developer, Tester) turns a person's words into a finished, production-quality web project delivered as one self-contained HTML file.";
@@ -164,7 +219,9 @@ var KIND_GUIDES = {
 - Depth: rising difficulty or levels, collectibles or power-ups, enemies or obstacles with varied behaviour, juicy feedback (particles, screen shake, hit flash, easing).
 - Audio: synthesise effects with the Web Audio API; create/resume the AudioContext only on the first user input; a mute toggle that is remembered.
 - Controls: full keyboard controls AND touch controls for phones (on-screen buttons, a virtual joystick or touch zones; preventDefault on touch to stop scrolling; pointer events). The HUD stays readable at 360px wide.
-- Best score saved in localStorage inside try/catch. No external assets: draw everything with canvas shapes, gradients and text.`,
+- Best score saved in localStorage inside try/catch. No external assets: draw everything with canvas shapes, gradients and text.
+- Enter, Space and a tap must start or restart the game; arrows/WASD and touch must move the player \u2014 a playtester will press them.
+${GAME_DOC}`,
   app: `- A real working tool: complete core flow, state kept in memory and persisted to localStorage (inside try/catch), empty states, validation, keyboard support, undo where it makes sense.
 - Polished app layout: toolbar or sidebar, clear primary action, responsive down to 360px.
 - Pre-fill realistic example data so the first screen shows the tool working, marked as an example.`,
@@ -883,7 +940,7 @@ async function runPipeline(input) {
       ultra: route2.effort === "ultra",
       memory: route2.intent === "new" ? void 0 : project?.memory
     };
-    const polish = (h) => withMotionKit(h, { intro: route2.kind !== "game" });
+    const polish = (h) => route2.kind === "game" ? withMotionKit(withGameKit(h), { intro: false }) : withMotionKit(h);
     const runStep = async (plan, ctx, mode, id = plan.id) => {
       const started = now();
       emit({ type: "step", id, role: plan.role, status: "start", title: plan.title, model: plan.model, at: started });
@@ -1046,18 +1103,35 @@ async function runPipeline(input) {
     let runtime = [];
     let audits = 0;
     const diagnose = async () => {
-      if (!input.diagnose || signal?.aborted) return [];
-      const id = audits++ ? "audit-" + audits : "audit";
-      const started = now();
-      emit({ type: "step", id, role: "audit", status: "start", title: "\u0414\u0438\u0430\u0433\u043D\u043E\u0441\u0442\u0438\u043A\u0430", model: "browser", at: started });
-      try {
-        const reports = await input.diagnose(html, route2.kind);
-        emit({ type: "step", id, status: "done", ms: now() - started, summary: auditSummary(reports), output: auditOutput(reports) });
-        return auditChecks(reports);
-      } catch {
-        emit({ type: "step", id, status: "skipped", reason: "\u041D\u0435 \u0443\u0434\u0430\u043B\u043E\u0441\u044C \u0437\u0430\u043F\u0443\u0441\u0442\u0438\u0442\u044C \u043F\u0440\u043E\u0432\u0435\u0440\u043A\u0443 \u0432 \u0431\u0440\u0430\u0443\u0437\u0435\u0440\u0435" });
-        return [];
+      if (signal?.aborted) return [];
+      audits++;
+      let out = [];
+      if (input.diagnose) {
+        const id = audits > 1 ? "audit-" + audits : "audit";
+        const started = now();
+        emit({ type: "step", id, role: "audit", status: "start", title: "\u0414\u0438\u0430\u0433\u043D\u043E\u0441\u0442\u0438\u043A\u0430", model: "browser", at: started });
+        try {
+          const reports = await input.diagnose(html, route2.kind);
+          emit({ type: "step", id, status: "done", ms: now() - started, summary: auditSummary(reports), output: auditOutput(reports) });
+          out = auditChecks(reports);
+        } catch {
+          emit({ type: "step", id, status: "skipped", reason: "\u041D\u0435 \u0443\u0434\u0430\u043B\u043E\u0441\u044C \u0437\u0430\u043F\u0443\u0441\u0442\u0438\u0442\u044C \u043F\u0440\u043E\u0432\u0435\u0440\u043A\u0443 \u0432 \u0431\u0440\u0430\u0443\u0437\u0435\u0440\u0435" });
+        }
       }
+      if (route2.kind === "game" && input.playtest && !signal?.aborted) {
+        const pid = audits > 1 ? "playtest-" + audits : "playtest";
+        const t0 = now();
+        emit({ type: "step", id: pid, role: "playtester", status: "start", title: "\u041F\u043B\u0435\u0439\u0442\u0435\u0441\u0442\u0435\u0440", model: "browser", at: t0 });
+        try {
+          const play = await input.playtest(html);
+          const pc = playChecks(play);
+          emit({ type: "step", id: pid, status: "done", ms: now() - t0, summary: playSummary(play), output: pc.length ? pc.map((c) => `\u2022 [${c.severity}] ${c.message}`).join("\n") : "\u0418\u0433\u0440\u0430 \u0437\u0430\u043F\u0443\u0441\u043A\u0430\u0435\u0442\u0441\u044F, \u0440\u0435\u0430\u0433\u0438\u0440\u0443\u0435\u0442 \u043D\u0430 \u043A\u043B\u0430\u0432\u0438\u0448\u0438 \u0438 \u043A\u0430\u0441\u0430\u043D\u0438\u044F, \u043E\u0448\u0438\u0431\u043E\u043A \u043D\u0435\u0442." });
+          out = [...out, ...pc.map((c) => ({ ...c, id: "runtime-" + c.id }))];
+        } catch {
+          emit({ type: "step", id: pid, status: "skipped", reason: "\u041D\u0435 \u0443\u0434\u0430\u043B\u043E\u0441\u044C \u0437\u0430\u043F\u0443\u0441\u0442\u0438\u0442\u044C \u0438\u0433\u0440\u0443" });
+        }
+      }
+      return out;
     };
     runtime = await diagnose();
     let checks = [...staticChecks(html, route2.kind, input.syntax ?? null), ...runtime];

@@ -4,6 +4,7 @@
  * inside the viewport, so the browser renders them normally instead of throttling them.
  */
 import { withAudit, type AuditReport } from '@/lib/effect/audit';
+import { withPlaytest, type PlayReport } from '@/lib/effect/game-kit';
 
 const strings = (v: unknown, n = 12) => (Array.isArray(v) ? v.filter((x) => typeof x === 'string').slice(0, n).map((x: string) => x.slice(0, 300)) : []);
 
@@ -68,4 +69,46 @@ export function makeDiagnose(widths = [390, 1440], timeoutMs = 8000) {
     for (const w of widths) out.push(await runAt(html, w, timeoutMs));
     return out;
   };
+}
+
+/** Plays a game for about five seconds in a sandboxed frame under the studio. */
+export function makePlaytest(width = 960, height = 600, timeoutMs = 12000) {
+  return (html: string): Promise<PlayReport | null> =>
+    new Promise((resolve) => {
+      const frame = document.createElement('iframe');
+      frame.setAttribute('sandbox', 'allow-scripts');
+      frame.setAttribute('aria-hidden', 'true');
+      frame.tabIndex = -1;
+      frame.title = 'Плейтест';
+      frame.style.cssText = `position:fixed;left:0;top:0;width:${width}px;height:${height}px;border:0;z-index:-1;pointer-events:none;contain:strict`;
+      let finished = false;
+      const finish = (r: PlayReport) => {
+        if (finished) return;
+        finished = true;
+        window.removeEventListener('message', onMessage);
+        window.clearTimeout(timer);
+        frame.remove();
+        resolve(r);
+      };
+      const onMessage = (e: MessageEvent) => {
+        if (e.source !== frame.contentWindow) return;
+        const d = e.data as { fx?: string; report?: Record<string, unknown> };
+        if (d?.fx !== 'playtest' || !d.report) return;
+        const r = d.report;
+        finish({
+          width,
+          frames: Number(r.frames) || 0,
+          fps: Number(r.fps) || 0,
+          errors: strings(r.errors, 8),
+          canvas: Boolean(r.canvas),
+          frozen: Boolean(r.frozen),
+          changes: Number(r.changes) || 0,
+          inputs: Number(r.inputs) || 0,
+        });
+      };
+      const timer = window.setTimeout(() => finish({ width, frames: 0, fps: 0, errors: [], canvas: false, frozen: false, changes: 0, inputs: 0, timeout: true }), timeoutMs);
+      window.addEventListener('message', onMessage);
+      frame.srcdoc = withPlaytest(html);
+      document.body.appendChild(frame);
+    });
 }
